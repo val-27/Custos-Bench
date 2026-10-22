@@ -1,0 +1,246 @@
+{
+  "schema": "custos-benchmarks.corpus.v1",
+  "count": 24,
+  "artifacts": [
+    {
+      "name": "benign_b1",
+      "category": "benign",
+      "expected": "allow",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/benign/benign_b1.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/benign/benign_b1.grpc",
+      "pb_bytes": 602170,
+      "grpc_bytes": 602175,
+      "notes": "resnet50 FP32 NCHW [1,3,224,224] source=synthetic tensor_bytes=602112"
+    },
+    {
+      "name": "benign_b2",
+      "category": "benign",
+      "expected": "allow",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/benign/benign_b2.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/benign/benign_b2.grpc",
+      "pb_bytes": 1204282,
+      "grpc_bytes": 1204287,
+      "notes": "resnet50 FP32 NCHW [2,3,224,224] source=synthetic tensor_bytes=1204224"
+    },
+    {
+      "name": "benign_b4",
+      "category": "benign",
+      "expected": "allow",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/benign/benign_b4.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/benign/benign_b4.grpc",
+      "pb_bytes": 2408507,
+      "grpc_bytes": 2408512,
+      "notes": "resnet50 FP32 NCHW [4,3,224,224] source=synthetic tensor_bytes=2408448"
+    },
+    {
+      "name": "benign_b8",
+      "category": "benign",
+      "expected": "allow",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/benign/benign_b8.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/benign/benign_b8.grpc",
+      "pb_bytes": 4816955,
+      "grpc_bytes": 4816960,
+      "notes": "resnet50 FP32 NCHW [8,3,224,224] source=synthetic tensor_bytes=4816896"
+    },
+    {
+      "name": "benign_b16",
+      "category": "benign",
+      "expected": "allow",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/benign/benign_b16.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/benign/benign_b16.grpc",
+      "pb_bytes": 9633852,
+      "grpc_bytes": 9633857,
+      "notes": "resnet50 FP32 NCHW [16,3,224,224] source=synthetic tensor_bytes=9633792"
+    },
+    {
+      "name": "nesting_depth_15",
+      "category": "nesting_bomb",
+      "expected": "allow",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_15.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_15.grpc",
+      "pb_bytes": 42,
+      "grpc_bytes": 47,
+      "notes": "field-5 length-delimited wrap depth=15; boundary allow is D<=16"
+    },
+    {
+      "name": "nesting_depth_16",
+      "category": "nesting_bomb",
+      "expected": "allow",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_16.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_16.grpc",
+      "pb_bytes": 44,
+      "grpc_bytes": 49,
+      "notes": "field-5 length-delimited wrap depth=16; boundary allow is D<=16"
+    },
+    {
+      "name": "nesting_depth_17",
+      "category": "nesting_bomb",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_17.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_17.grpc",
+      "pb_bytes": 46,
+      "grpc_bytes": 51,
+      "notes": "field-5 length-delimited wrap depth=17; boundary allow is D<=16"
+    },
+    {
+      "name": "nesting_depth_20",
+      "category": "nesting_bomb",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_20.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_20.grpc",
+      "pb_bytes": 52,
+      "grpc_bytes": 57,
+      "notes": "field-5 length-delimited wrap depth=20; boundary allow is D<=16"
+    },
+    {
+      "name": "nesting_depth_50",
+      "category": "nesting_bomb",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_50.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_50.grpc",
+      "pb_bytes": 112,
+      "grpc_bytes": 117,
+      "notes": "field-5 length-delimited wrap depth=50; boundary allow is D<=16"
+    },
+    {
+      "name": "nesting_depth_100",
+      "category": "nesting_bomb",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_100.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_100.grpc",
+      "pb_bytes": 249,
+      "grpc_bytes": 254,
+      "notes": "field-5 length-delimited wrap depth=100; boundary allow is D<=16"
+    },
+    {
+      "name": "nesting_depth_250",
+      "category": "nesting_bomb",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_250.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_250.grpc",
+      "pb_bytes": 699,
+      "grpc_bytes": 704,
+      "notes": "field-5 length-delimited wrap depth=250; boundary allow is D<=16"
+    },
+    {
+      "name": "nesting_depth_500",
+      "category": "nesting_bomb",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_500.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/nesting_depth_500.grpc",
+      "pb_bytes": 1449,
+      "grpc_bytes": 1454,
+      "notes": "field-5 length-delimited wrap depth=500; boundary allow is D<=16"
+    },
+    {
+      "name": "shape_neg_packed",
+      "category": "shape_overflow",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_neg_packed.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_neg_packed.grpc",
+      "pb_bytes": 60,
+      "grpc_bytes": 65,
+      "notes": "packed shape [1,3,-1,224]; -1 is the 10-byte two's-complement varint"
+    },
+    {
+      "name": "shape_neg_unpacked",
+      "category": "shape_overflow",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_neg_unpacked.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_neg_unpacked.grpc",
+      "pb_bytes": 62,
+      "grpc_bytes": 67,
+      "notes": "unpacked shape [1,3,-1,224] via repeated tag 0x18"
+    },
+    {
+      "name": "shape_wrap_64bit_packed",
+      "category": "shape_overflow",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_wrap_64bit_packed.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_wrap_64bit_packed.grpc",
+      "pb_bytes": 57,
+      "grpc_bytes": 62,
+      "notes": "packed shape [2, 2**62, 2] whose product is 0 mod 2**64"
+    },
+    {
+      "name": "shape_wrap_64bit_unpacked",
+      "category": "shape_overflow",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_wrap_64bit_unpacked.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_wrap_64bit_unpacked.grpc",
+      "pb_bytes": 58,
+      "grpc_bytes": 63,
+      "notes": "unpacked shape [2, 2**62, 2]"
+    },
+    {
+      "name": "shape_oom_massive_packed",
+      "category": "shape_overflow",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_oom_massive_packed.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_oom_massive_packed.grpc",
+      "pb_bytes": 52,
+      "grpc_bytes": 57,
+      "notes": "packed shape [1024,1024,1024] ~= 1.07e9 elements"
+    },
+    {
+      "name": "shape_oom_massive_unpacked",
+      "category": "shape_overflow",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_oom_massive_unpacked.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_oom_massive_unpacked.grpc",
+      "pb_bytes": 53,
+      "grpc_bytes": 58,
+      "notes": "unpacked shape [1024,1024,1024]"
+    },
+    {
+      "name": "shape_reordered_tail",
+      "category": "shape_overflow",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_reordered_tail.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/shape_reordered_tail.grpc",
+      "pb_bytes": 16440,
+      "grpc_bytes": 16445,
+      "notes": "16 KiB field 7 precedes malicious field 5 [1024,1024,1024]"
+    },
+    {
+      "name": "varint_unterminated_11",
+      "category": "malformed_varint",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/varint_unterminated_11.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/varint_unterminated_11.grpc",
+      "pb_bytes": 22,
+      "grpc_bytes": 27,
+      "notes": "tag 0x08 followed by 11 bytes of 0xFF (MSB=1)"
+    },
+    {
+      "name": "varint_unterminated_64",
+      "category": "malformed_varint",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/varint_unterminated_64.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/varint_unterminated_64.grpc",
+      "pb_bytes": 75,
+      "grpc_bytes": 80,
+      "notes": "tag 0x08 followed by 64 bytes of 0x80 (MSB=1)"
+    },
+    {
+      "name": "varint_10th_byte_overflow",
+      "category": "malformed_varint",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/varint_10th_byte_overflow.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/varint_10th_byte_overflow.grpc",
+      "pb_bytes": 21,
+      "grpc_bytes": 26,
+      "notes": "tag 0x08, 9x 0xFF, terminating 0x7F with bits above a 64-bit shift"
+    },
+    {
+      "name": "varint_truncated_eof",
+      "category": "malformed_varint",
+      "expected": "reject",
+      "pb_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/varint_truncated_eof.pb",
+      "grpc_path": "/Users/jpvalentine/Workspace/Custos-Bench/corpus/malicious/varint_truncated_eof.grpc",
+      "pb_bytes": 14,
+      "grpc_bytes": 19,
+      "notes": "tag 0x08 followed by 3 bytes of 0xFF and immediate EOF"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+[project]
+name = "custos-synthesizer"
+version = "0.1.0"
+description = "Deterministic KServe v2 payload and adversarial protobuf synthesizer for Custos benchmarks"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+images = ["pillow>=10.0"]
+plot = ["matplotlib>=3.8", "numpy>=1.26"]
+
+[project.scripts]
+custos-synthesize = "generate_all:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = [
+    "generate_all",
+    "benign_generator",
+    "exploit_generator",
+    "wire_utils",
+]
