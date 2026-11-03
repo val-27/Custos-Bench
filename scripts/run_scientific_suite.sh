@@ -13,9 +13,9 @@
 #       responsibility (run setup_testbed.sh there).
 #
 # Executes N trials (default 5) across:
-#   Topology A  unprotected Triton
-#   Topology B  standard Envoy baseline
-#   Topology C  Envoy + Custos
+#   control   Unprotected Control (Direct Triton on :8001)
+#   baseline  Proxy Baseline (Standard Envoy Only on :8002)
+#   prod      Custos Production (Envoy Gateway + custos-proc Sidecar on :8003)
 #
 # Service start commands are optional. When omitted the suite assumes the
 # topology is already listening on the corresponding port.
@@ -174,9 +174,9 @@ run_bench() {
 }
 
 topologies=(
-  "A:${PORT_A}"
-  "B:${PORT_B}"
-  "C:${PORT_C}"
+  "control:${PORT_A}"
+  "baseline:${PORT_B}"
+  "prod:${PORT_C}"
 )
 
 for spec in "${topologies[@]}"; do

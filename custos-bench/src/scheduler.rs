@@ -58,11 +58,15 @@ impl Corpus {
                 benign_dir.display()
             ));
         }
-        let malicious = if malicious_dir.is_dir() {
+        let mut malicious = if malicious_dir.is_dir() {
             load_dir(&malicious_dir, true)?
         } else {
             Vec::new()
         };
+        // Exclude D<=16 boundary-acceptance test cases (`nesting_depth_15`, `nesting_depth_16`)
+        // so that active attack regimes (`interleaved`, `saturating-burst`) only fire payloads
+        // whose expected admission outcome is `reject`.
+        malicious.retain(|p| p.name != "nesting_depth_15" && p.name != "nesting_depth_16");
         Ok(Self { benign, malicious })
     }
 

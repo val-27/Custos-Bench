@@ -60,12 +60,19 @@ def write_dual(
     framed = grpc_frame(pb_bytes)
     pb_path.write_bytes(pb_bytes)
     grpc_path.write_bytes(framed)
+    repo_root = directory.parent.parent
+    try:
+        rel_pb = pb_path.relative_to(repo_root).as_posix()
+        rel_grpc = grpc_path.relative_to(repo_root).as_posix()
+    except ValueError:
+        rel_pb = str(pb_path.as_posix())
+        rel_grpc = str(grpc_path.as_posix())
     return Artifact(
         name=name,
         category=category,
         expected=expected,
-        pb_path=str(pb_path.as_posix()),
-        grpc_path=str(grpc_path.as_posix()),
+        pb_path=rel_pb,
+        grpc_path=rel_grpc,
         pb_bytes=len(pb_bytes),
         grpc_bytes=len(framed),
         notes=notes,
