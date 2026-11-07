@@ -31,9 +31,9 @@ To isolate the latency, throughput, CPU/RSS cost, and survivability impact of [`
 ## 3. Target Metrics & Benchmark Regimes
 
 ### Three Workload Regimes
-* **`steady-benign`:** Open-loop `100%` benign KServe v2 inference load (`100`, `150`, `200`, `500` RPS) across batch sizes `1..16` to quantify steady-state latency overhead.
-* **`interleaved`:** Open-loop `99%` benign / `1%` malicious deterministic traffic mix to measure tail-latency degradation (`P99`, `P99.9`, `P99.99`), head-of-line blocking, False Positive Rate (`FPR`), and True Positive Drop Rate (`TP-drop`).
-* **`saturating-burst`:** Simultaneous fan-out of concurrent RPCs (`90%` adversarial exploits + `10%` legitimate `benign_b1` inference requests) to evaluate legitimate user `P99` tail latency and survival under an active flood alongside total data-path Peak RSS (`Triton + Envoy + Sidecar`).
+* **`steady-benign`:** Open-loop `100%` benign KServe v2 inference load (`100` and `150` RPS) across three benign packet profiles (`ResNet-50 B=1 FP32`, `BYTES Tensor [1, 2]`, and `Mixed (FP32 + BYTES + D<=16)`) to quantify steady-state latency overhead.
+* **`interleaved`:** Open-loop `94%` benign / `6%` malicious deterministic traffic mix (`--malicious-percent 6`, sending all 33 `.pb` adversarial exploit payloads in every trial) to measure tail-latency degradation (`P99`, `P99.9`, `P99.99`), head-of-line blocking, False Positive Rate (`FPR`), and True Positive Drop Rate (`TP-drop`).
+* **`saturating-burst`:** Closed fan-out of `500` concurrent RPCs (`90%` adversarial exploits cycling across all 33 `.pb` exploit payloads + `10%` legitimate mixed benign inference requests stamped from `T0`) to evaluate legitimate user `P99` sojourn latency and survival under an active flood alongside total data-path Peak RSS (`tritonserver + envoy + custos-proc`).
 
 ### Four Evaluation Pillars Exported per Trial (JSON & CSV)
 1. **Filtering Accuracy (`accuracy`):** `true_positive_drop_rate` (`malicious_rejected / malicious_sent`, `N/A` on `steady-benign`) and `false_positive_rate` (`benign_rejected / benign_sent`).
@@ -60,14 +60,23 @@ Each payload is emitted in two formats under `corpus/{benign,malicious}/`:
 | `*.pb` | Raw Protobuf message bytes (no 5-byte gRPC frame header) | `custos-bench` (`RawCodec` lets Tonic prepend the 5-byte gRPC header on the wire) |
 | `*.grpc` | Pre-framed `struct.pack(">BI", flag, len) + pb_bytes` | Offline unit tests (`custos_core::inspect_payload`) |
 
-`corpus/manifest.json` indexes all 30 generated payloads:
-* **6 Benign Payloads (`corpus/benign/`):** `benign_b1` (`602 KB`), `benign_b2` (`1.20 MB`), `benign_b4` (`2.41 MB`), `benign_b8` (`4.82 MB`), `benign_b16` (`9.63 MB`), and `benign_bytes_tensor` (`134 B` variable-length `BYTES` string tensor `[1, 2]`).
+`corpus/manifest.json` indexes 59 payloads. That is 52 dual `.pb`/`.grpc` files (16 benign, 35 malicious, and `corpus/rpc/empty_model_infer`, which the five RPC rows share) plus 3 HTTP bodies. `expected` is the KServe decision the sweep scores, not a claim about the current scanner.
+
+* **16 Benign Payloads (`corpus/benign/`, `expected: allow`):** `benign_b1` (`602 KB`), `benign_b2` (`1.20 MB`), `benign_b4` (`2.41 MB`), `benign_b8` (`4.82 MB`), `benign_b16` (`9.63 MB`), `benign_bytes_tensor` (`134 B` variable-length `BYTES` string tensor `[1, 2]`), and 10 oracle twins: `benign_multichunk_aligned`, `benign_contents_fp32_{unpacked,packed}`, `benign_mixed_fp32_bytes`, `benign_param_binary_data_size`, `benign_shape_zero_axis` (`[1,0,224,224]` with an empty raw chunk), and `benign_dtype_{bool,fp16,bf16,fp64}`. Steady, interleaved, and burst traffic still uses `benign_b1` unless `--batch` says otherwise. These extra files do not enter the mixed-benign rotation.
 * **2 Boundary-Acceptance Payloads (`corpus/malicious/nesting_depth_{15,16}`):** Verify `MAX_DEPTH = 16` boundary admission (`expected: "allow"`). Automatically excluded from active attack bursts by `Corpus::load` so `interleaved` and `saturating-burst` only fire true exploits.
-* **22 Adversarial Exploit Payloads (`corpus/malicious/`):**
+* **33 Adversarial Payloads (`corpus/malicious/`, `expected: reject`):**
   * **Nesting Bombs (`6`):** `nesting_depth_{17,20,50,100,250,500}`
-  * **Tensor Shape Overflows & Buffer Parity Mismatch (`8`):** `shape_neg_{packed,unpacked}`, `shape_wrap_64bit_{packed,unpacked}`, `shape_oom_massive_{packed,unpacked}`, `shape_reordered_tail` (`16 KiB` Field 7 preceding malicious Field 5), `shape_buffer_mismatch_underread` (`CVE-2025-23334`-class OOB read — `[4,3,224,224]` `FP32` declaring `2.41 MB` with `64 B` `raw_input_contents`)
+  * **Tensor Shape Overflows & Buffer Parity Mismatch (`8`):** `shape_neg_{packed,unpacked}`, `shape_wrap_64bit_{packed,unpacked}`, `shape_oom_massive_{packed,unpacked}`, `shape_reordered_tail` (`16 KiB` Field 7 preceding malicious Field 5), `shape_buffer_mismatch_underread` (KServe v2 shape-to-buffer parity violation — `[4,3,224,224]` `FP32` declaring `2.41 MB` with `64 B` `raw_input_contents`)
   * **Malformed Varints (`4`):** `varint_unterminated_11`, `varint_unterminated_64`, `varint_10th_byte_overflow`, `varint_truncated_eof`
-  * **CVE Wire, Parameter & Compression Exploits (`4`):** `sgroup_wire_type_3_bomb` (`CVE-2024-7254`-class — 64 nested Wire Type 3 `SGROUP` tags), `unknown_field_ast_flood` (`CVE-2022-1941` / `CVE-2021-22569`-class — 1,500 shallow unknown tags at `D=0`), `cve_2024_0088_shm_params_infer` (`CVE-2024-0088` — `shared_memory_region`/`offset`/`byte_size` injected inside `ModelInfer` `InferInputTensor.parameters`), and `grpc_compressed_flag_01` (`flag = 0x01` `gzip`-compressed gRPC frame concealing an OOM tensor payload)
+  * **CVE Wire, Parameter & Compression Exploits (`4`):** `sgroup_wire_type_3_bomb` (`CVE-2024-7254`-class — 64 nested Wire Type 3 `SGROUP` tags), `unknown_field_ast_flood` (`CVE-2022-1941` / `CVE-2021-22569`-class — 1,500 shallow unknown tags at `D=0`), `cve_2024_0088_shm_params_infer` (`CVE-2024-0088` — `shared_memory_region`/`offset`/`byte_size` injected inside `ModelInfer` `InferInputTensor.parameters` using `int64_param = 2`, `string_param = 3`), and `grpc_compressed_flag_01` (`flag = 0x01` `gzip`-compressed gRPC frame concealing an OOM tensor payload)
+  * **Oracle rejects (`11`):** `chunk_swap_fp32`, `chunk_omitted_fp32`, `chunk_swap_reordered` (per-chunk binding), `contents_fp32_unpacked_{short,ceiling}` (contents cardinality), `bytes_length_prefix_oversize`, `bytes_masks_short_fp32`, `shape_sum_four_ceilings`, `shape_packed_ones` (100,000 packed dimensions of 1; `latency_ns` is the measurement against the 250 ms ext_proc deadline), `datatype_fp64_short_raw`, `datatype_unknown_width`
+* **8 Sweep-only rows (not loaded by `Corpus::load`):** `corpus/framing/frame_{single,two_concat,stream_infer_two}.body` are exact HTTP/2 bodies (`framing: http-body`). `corpus/rpc/empty_model_infer.pb` is one empty protobuf shared by `rpc_model_infer_empty` (`allow`) and the four header probes `rpc_{system,cuda}_shared_memory_register`, `rpc_repository_model_{load,unload}` (`reject`).
+
+`python3 synthesizer/generate_all.py --include-ceiling-blob` also writes `benign_fp32_ceiling` (FP32 `[16777216]`, 64 MiB raw). The default corpus omits it. The Envoy listener cap is 16 MiB.
+
+### Oracle sweep
+
+`--regime oracle-sweep` sends each manifest row once, sequentially. A row matches when `expected: allow` returns `OK`, or `expected: reject` returns `INVALID_ARGUMENT`, `HTTP_400`, or `PERMISSION_DENIED`. `INTERNAL` is not a block. `rx_bytes` is the response body the client observed. `scripts/export_to_web.py` skips this regime. `scripts/run_scientific_suite.sh --sweep` runs it once per topology and is off by default. `PERMISSION_DENIED` is not an admission reject for the open-loop true-positive rate.
 
 ---
 

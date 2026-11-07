@@ -20,9 +20,19 @@ GRPC_COMPRESSION_NONE = 0x00
 GRPC_HEADER_STRUCT = struct.Struct(">BI")
 
 
+MODEL_INFER_METHOD = "/inference.GRPCInferenceService/ModelInfer"
+
+
 @dataclass(frozen=True)
 class Artifact:
-    """Index entry for one generated payload."""
+    """Index entry for one generated payload.
+
+    ``grpc_path`` is the on-disk ``.grpc`` sibling (or the same file as
+    ``pb_path`` when the artifact is already an HTTP body). It is not the
+    gRPC method. ``method`` is the ``:path`` the sweep calls, and
+    ``framing`` is ``protobuf`` (tonic adds the 5-byte frame) or
+    ``http-body`` (the file is the exact HTTP/2 body).
+    """
 
     name: str
     category: str
@@ -32,6 +42,8 @@ class Artifact:
     pb_bytes: int
     grpc_bytes: int
     notes: str = ""
+    method: str = MODEL_INFER_METHOD
+    framing: str = "protobuf"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -84,7 +96,7 @@ def write_manifest(path: Path, artifacts: Iterable[Artifact]) -> None:
     """Write ``corpus/manifest.json`` indexing every generated payload."""
     entries = [artifact.to_dict() for artifact in artifacts]
     payload = {
-        "schema": "custos-benchmarks.corpus.v1",
+        "schema": "custos-benchmarks.corpus.v2",
         "count": len(entries),
         "artifacts": entries,
     }

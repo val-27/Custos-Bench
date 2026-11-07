@@ -1,6 +1,7 @@
 //! Coordinated-omission-free open-loop load generator for Custos.
 
 mod cli;
+mod oracle;
 mod raw_codec;
 mod report;
 mod scheduler;

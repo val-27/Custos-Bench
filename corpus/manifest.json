@@ -1,6 +1,6 @@
 {
-  "schema": "custos-benchmarks.corpus.v1",
-  "count": 30,
+  "schema": "custos-benchmarks.corpus.v2",
+  "count": 59,
   "artifacts": [
     {
       "name": "benign_b1",
@@ -10,7 +10,9 @@
       "grpc_path": "corpus/benign/benign_b1.grpc",
       "pb_bytes": 602170,
       "grpc_bytes": 602175,
-      "notes": "resnet50 FP32 NCHW [1,3,224,224] source=synthetic tensor_bytes=602112"
+      "notes": "resnet50 FP32 NCHW [1,3,224,224] source=synthetic tensor_bytes=602112",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "benign_b2",
@@ -20,7 +22,9 @@
       "grpc_path": "corpus/benign/benign_b2.grpc",
       "pb_bytes": 1204282,
       "grpc_bytes": 1204287,
-      "notes": "resnet50 FP32 NCHW [2,3,224,224] source=synthetic tensor_bytes=1204224"
+      "notes": "resnet50 FP32 NCHW [2,3,224,224] source=synthetic tensor_bytes=1204224",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "benign_b4",
@@ -30,7 +34,9 @@
       "grpc_path": "corpus/benign/benign_b4.grpc",
       "pb_bytes": 2408507,
       "grpc_bytes": 2408512,
-      "notes": "resnet50 FP32 NCHW [4,3,224,224] source=synthetic tensor_bytes=2408448"
+      "notes": "resnet50 FP32 NCHW [4,3,224,224] source=synthetic tensor_bytes=2408448",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "benign_b8",
@@ -40,7 +46,9 @@
       "grpc_path": "corpus/benign/benign_b8.grpc",
       "pb_bytes": 4816955,
       "grpc_bytes": 4816960,
-      "notes": "resnet50 FP32 NCHW [8,3,224,224] source=synthetic tensor_bytes=4816896"
+      "notes": "resnet50 FP32 NCHW [8,3,224,224] source=synthetic tensor_bytes=4816896",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "benign_b16",
@@ -50,7 +58,9 @@
       "grpc_path": "corpus/benign/benign_b16.grpc",
       "pb_bytes": 9633852,
       "grpc_bytes": 9633857,
-      "notes": "resnet50 FP32 NCHW [16,3,224,224] source=synthetic tensor_bytes=9633792"
+      "notes": "resnet50 FP32 NCHW [16,3,224,224] source=synthetic tensor_bytes=9633792",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "benign_bytes_tensor",
@@ -60,7 +70,9 @@
       "grpc_path": "corpus/benign/benign_bytes_tensor.grpc",
       "pb_bytes": 134,
       "grpc_bytes": 139,
-      "notes": "KServe v2 BYTES tensor [1,2] with length-prefixed strings (73 B raw_input_contents)"
+      "notes": "KServe v2 BYTES tensor [1,2] with length-prefixed strings (73 B raw_input_contents)",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "nesting_depth_15",
@@ -70,7 +82,9 @@
       "grpc_path": "corpus/malicious/nesting_depth_15.grpc",
       "pb_bytes": 42,
       "grpc_bytes": 47,
-      "notes": "field-5 length-delimited wrap depth=15; boundary allow is D<=16"
+      "notes": "field-5 length-delimited wrap depth=15; boundary allow is D<=16",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "nesting_depth_16",
@@ -80,7 +94,9 @@
       "grpc_path": "corpus/malicious/nesting_depth_16.grpc",
       "pb_bytes": 44,
       "grpc_bytes": 49,
-      "notes": "field-5 length-delimited wrap depth=16; boundary allow is D<=16"
+      "notes": "field-5 length-delimited wrap depth=16; boundary allow is D<=16",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "nesting_depth_17",
@@ -90,7 +106,9 @@
       "grpc_path": "corpus/malicious/nesting_depth_17.grpc",
       "pb_bytes": 46,
       "grpc_bytes": 51,
-      "notes": "field-5 length-delimited wrap depth=17; boundary allow is D<=16"
+      "notes": "field-5 length-delimited wrap depth=17; boundary allow is D<=16",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "nesting_depth_20",
@@ -100,7 +118,9 @@
       "grpc_path": "corpus/malicious/nesting_depth_20.grpc",
       "pb_bytes": 52,
       "grpc_bytes": 57,
-      "notes": "field-5 length-delimited wrap depth=20; boundary allow is D<=16"
+      "notes": "field-5 length-delimited wrap depth=20; boundary allow is D<=16",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "nesting_depth_50",
@@ -110,7 +130,9 @@
       "grpc_path": "corpus/malicious/nesting_depth_50.grpc",
       "pb_bytes": 112,
       "grpc_bytes": 117,
-      "notes": "field-5 length-delimited wrap depth=50; boundary allow is D<=16"
+      "notes": "field-5 length-delimited wrap depth=50; boundary allow is D<=16",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "nesting_depth_100",
@@ -120,7 +142,9 @@
       "grpc_path": "corpus/malicious/nesting_depth_100.grpc",
       "pb_bytes": 249,
       "grpc_bytes": 254,
-      "notes": "field-5 length-delimited wrap depth=100; boundary allow is D<=16"
+      "notes": "field-5 length-delimited wrap depth=100; boundary allow is D<=16",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "nesting_depth_250",
@@ -130,7 +154,9 @@
       "grpc_path": "corpus/malicious/nesting_depth_250.grpc",
       "pb_bytes": 699,
       "grpc_bytes": 704,
-      "notes": "field-5 length-delimited wrap depth=250; boundary allow is D<=16"
+      "notes": "field-5 length-delimited wrap depth=250; boundary allow is D<=16",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "nesting_depth_500",
@@ -140,7 +166,9 @@
       "grpc_path": "corpus/malicious/nesting_depth_500.grpc",
       "pb_bytes": 1449,
       "grpc_bytes": 1454,
-      "notes": "field-5 length-delimited wrap depth=500; boundary allow is D<=16"
+      "notes": "field-5 length-delimited wrap depth=500; boundary allow is D<=16",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "shape_neg_packed",
@@ -150,7 +178,9 @@
       "grpc_path": "corpus/malicious/shape_neg_packed.grpc",
       "pb_bytes": 60,
       "grpc_bytes": 65,
-      "notes": "packed shape [1,3,-1,224]; -1 is the 10-byte two's-complement varint"
+      "notes": "packed shape [1,3,-1,224]; -1 is the 10-byte two's-complement varint",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "shape_neg_unpacked",
@@ -160,7 +190,9 @@
       "grpc_path": "corpus/malicious/shape_neg_unpacked.grpc",
       "pb_bytes": 62,
       "grpc_bytes": 67,
-      "notes": "unpacked shape [1,3,-1,224] via repeated tag 0x18"
+      "notes": "unpacked shape [1,3,-1,224] via repeated tag 0x18",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "shape_wrap_64bit_packed",
@@ -170,7 +202,9 @@
       "grpc_path": "corpus/malicious/shape_wrap_64bit_packed.grpc",
       "pb_bytes": 57,
       "grpc_bytes": 62,
-      "notes": "packed shape [2, 2**62, 2] whose product is 0 mod 2**64"
+      "notes": "packed shape [2, 2**62, 2] whose product is 0 mod 2**64",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "shape_wrap_64bit_unpacked",
@@ -180,7 +214,9 @@
       "grpc_path": "corpus/malicious/shape_wrap_64bit_unpacked.grpc",
       "pb_bytes": 58,
       "grpc_bytes": 63,
-      "notes": "unpacked shape [2, 2**62, 2]"
+      "notes": "unpacked shape [2, 2**62, 2]",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "shape_oom_massive_packed",
@@ -190,7 +226,9 @@
       "grpc_path": "corpus/malicious/shape_oom_massive_packed.grpc",
       "pb_bytes": 52,
       "grpc_bytes": 57,
-      "notes": "packed shape [1024,1024,1024] ~= 1.07e9 elements"
+      "notes": "packed shape [1024,1024,1024] ~= 1.07e9 elements",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "shape_oom_massive_unpacked",
@@ -200,7 +238,9 @@
       "grpc_path": "corpus/malicious/shape_oom_massive_unpacked.grpc",
       "pb_bytes": 53,
       "grpc_bytes": 58,
-      "notes": "unpacked shape [1024,1024,1024]"
+      "notes": "unpacked shape [1024,1024,1024]",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "shape_reordered_tail",
@@ -210,7 +250,9 @@
       "grpc_path": "corpus/malicious/shape_reordered_tail.grpc",
       "pb_bytes": 16440,
       "grpc_bytes": 16445,
-      "notes": "16 KiB field 7 precedes malicious field 5 [1024,1024,1024]"
+      "notes": "16 KiB field 7 precedes malicious field 5 [1024,1024,1024]",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "shape_buffer_mismatch_underread",
@@ -220,7 +262,9 @@
       "grpc_path": "corpus/malicious/shape_buffer_mismatch_underread.grpc",
       "pb_bytes": 118,
       "grpc_bytes": 123,
-      "notes": "CVE-2025-23320: shape [4,3,224,224] FP32 (2,408,448 B expected) with 64 B raw_input_contents"
+      "notes": "KServe v2 shape-to-buffer parity mismatch: shape [4,3,224,224] FP32 (2,408,448 B expected) with 64 B raw_input_contents",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "varint_unterminated_11",
@@ -230,7 +274,9 @@
       "grpc_path": "corpus/malicious/varint_unterminated_11.grpc",
       "pb_bytes": 22,
       "grpc_bytes": 27,
-      "notes": "tag 0x08 followed by 11 bytes of 0xFF (MSB=1)"
+      "notes": "tag 0x08 followed by 11 bytes of 0xFF (MSB=1)",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "varint_unterminated_64",
@@ -240,7 +286,9 @@
       "grpc_path": "corpus/malicious/varint_unterminated_64.grpc",
       "pb_bytes": 75,
       "grpc_bytes": 80,
-      "notes": "tag 0x08 followed by 64 bytes of 0x80 (MSB=1)"
+      "notes": "tag 0x08 followed by 64 bytes of 0x80 (MSB=1)",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "varint_10th_byte_overflow",
@@ -250,7 +298,9 @@
       "grpc_path": "corpus/malicious/varint_10th_byte_overflow.grpc",
       "pb_bytes": 21,
       "grpc_bytes": 26,
-      "notes": "tag 0x08, 9x 0xFF, terminating 0x7F with bits above a 64-bit shift"
+      "notes": "tag 0x08, 9x 0xFF, terminating 0x7F with bits above a 64-bit shift",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "varint_truncated_eof",
@@ -260,7 +310,9 @@
       "grpc_path": "corpus/malicious/varint_truncated_eof.grpc",
       "pb_bytes": 14,
       "grpc_bytes": 19,
-      "notes": "tag 0x08 followed by 3 bytes of 0xFF and immediate EOF"
+      "notes": "tag 0x08 followed by 3 bytes of 0xFF and immediate EOF",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "sgroup_wire_type_3_bomb",
@@ -270,7 +322,9 @@
       "grpc_path": "corpus/malicious/sgroup_wire_type_3_bomb.grpc",
       "pb_bytes": 268,
       "grpc_bytes": 273,
-      "notes": "CVE-2024-7254-class: 64 nested Wire Type 3 (SGROUP) tags bypassing recursion counters"
+      "notes": "CVE-2024-7254-class: 64 nested Wire Type 3 (SGROUP) tags bypassing recursion counters",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "unknown_field_ast_flood",
@@ -280,7 +334,9 @@
       "grpc_path": "corpus/malicious/unknown_field_ast_flood.grpc",
       "pb_bytes": 4510,
       "grpc_bytes": 4515,
-      "notes": "CVE-2022-1941 / CVE-2021-22569-class: 1,500 shallow unknown tags at D=0 (> 1,024 tag limit)"
+      "notes": "CVE-2022-1941 / CVE-2021-22569-class: 1,500 shallow unknown tags at D=0 (> 1,024 tag limit)",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "cve_2024_0088_shm_params_infer",
@@ -290,7 +346,9 @@
       "grpc_path": "corpus/malicious/cve_2024_0088_shm_params_infer.grpc",
       "pb_bytes": 177,
       "grpc_bytes": 182,
-      "notes": "CVE-2024-0088: shared_memory_region/offset/byte_size injected inside ModelInfer parameters map"
+      "notes": "CVE-2024-0088: shared_memory_region/offset/byte_size injected inside ModelInfer parameters map",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
     },
     {
       "name": "grpc_compressed_flag_01",
@@ -300,7 +358,357 @@
       "grpc_path": "corpus/malicious/grpc_compressed_flag_01.grpc",
       "pb_bytes": 57,
       "grpc_bytes": 62,
-      "notes": "Compressed gRPC frame (flag=0x01 / gzip) concealing an OOM tensor payload from uncompressed wire inspection"
+      "notes": "Compressed gRPC frame (flag=0x01 / gzip) concealing an OOM tensor payload from uncompressed wire inspection",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "benign_multichunk_aligned",
+      "category": "chunk_parity",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_multichunk_aligned.pb",
+      "grpc_path": "corpus/benign/benign_multichunk_aligned.grpc",
+      "pb_bytes": 102,
+      "grpc_bytes": 107,
+      "notes": "FP32 [4] then FP32 [1] with raw chunks of 16 then 4 bytes",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "benign_contents_fp32_unpacked",
+      "category": "tensor_contents",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_contents_fp32_unpacked.pb",
+      "grpc_path": "corpus/benign/benign_contents_fp32_unpacked.grpc",
+      "pb_bytes": 86,
+      "grpc_bytes": 91,
+      "notes": "FP32 [1,4] as four unpacked fp32_contents (field 6, wire type 5), no raw_input_contents",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "benign_contents_fp32_packed",
+      "category": "tensor_contents",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_contents_fp32_packed.pb",
+      "grpc_path": "corpus/benign/benign_contents_fp32_packed.grpc",
+      "pb_bytes": 82,
+      "grpc_bytes": 87,
+      "notes": "FP32 [1,4] as packed fp32_contents (field 6, wire type 2) holding float32 1,2,3,4, no raw_input_contents",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "benign_mixed_fp32_bytes",
+      "category": "bytes_prefix",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_mixed_fp32_bytes.pb",
+      "grpc_path": "corpus/benign/benign_mixed_fp32_bytes.grpc",
+      "pb_bytes": 113,
+      "grpc_bytes": 118,
+      "notes": "FP32 [1,4] raw of 16 bytes plus BYTES [1,2] with little-endian u32 prefixes",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "benign_param_binary_data_size",
+      "category": "parameters",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_param_binary_data_size.pb",
+      "grpc_path": "corpus/benign/benign_param_binary_data_size.grpc",
+      "pb_bytes": 106,
+      "grpc_bytes": 111,
+      "notes": "FP32 [1,4] with InferParameter key binary_data_size on int64_param field 2",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "benign_shape_zero_axis",
+      "category": "shape_axis",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_shape_zero_axis.pb",
+      "grpc_path": "corpus/benign/benign_shape_zero_axis.grpc",
+      "pb_bytes": 63,
+      "grpc_bytes": 68,
+      "notes": "FP32 [1,0,224,224] with an empty raw_input_contents. KServe allows a zero axis",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "benign_dtype_bool",
+      "category": "datatype",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_dtype_bool.pb",
+      "grpc_path": "corpus/benign/benign_dtype_bool.grpc",
+      "pb_bytes": 58,
+      "grpc_bytes": 63,
+      "notes": "BOOL [1,4] with a 4-byte raw chunk",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "benign_dtype_fp16",
+      "category": "datatype",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_dtype_fp16.pb",
+      "grpc_path": "corpus/benign/benign_dtype_fp16.grpc",
+      "pb_bytes": 62,
+      "grpc_bytes": 67,
+      "notes": "FP16 [1,4] with an 8-byte raw chunk",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "benign_dtype_bf16",
+      "category": "datatype",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_dtype_bf16.pb",
+      "grpc_path": "corpus/benign/benign_dtype_bf16.grpc",
+      "pb_bytes": 62,
+      "grpc_bytes": 67,
+      "notes": "BF16 [1,4] with an 8-byte raw chunk",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "benign_dtype_fp64",
+      "category": "datatype",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_dtype_fp64.pb",
+      "grpc_path": "corpus/benign/benign_dtype_fp64.grpc",
+      "pb_bytes": 86,
+      "grpc_bytes": 91,
+      "notes": "FP64 [1,4] with a 32-byte raw chunk",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "chunk_swap_fp32",
+      "category": "chunk_parity",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/chunk_swap_fp32.pb",
+      "grpc_path": "corpus/malicious/chunk_swap_fp32.grpc",
+      "pb_bytes": 92,
+      "grpc_bytes": 97,
+      "notes": "FP32 [4] bound to a 4-byte chunk and FP32 [1] bound to a 16-byte chunk",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "chunk_omitted_fp32",
+      "category": "chunk_parity",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/chunk_omitted_fp32.pb",
+      "grpc_path": "corpus/malicious/chunk_omitted_fp32.grpc",
+      "pb_bytes": 93,
+      "grpc_bytes": 98,
+      "notes": "Two tensors expecting 16 and 4 bytes, with a single 20-byte raw chunk",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "chunk_swap_reordered",
+      "category": "chunk_parity",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/chunk_swap_reordered.pb",
+      "grpc_path": "corpus/malicious/chunk_swap_reordered.grpc",
+      "pb_bytes": 97,
+      "grpc_bytes": 102,
+      "notes": "Swapped raw chunks written before the inputs. Binding is by index, not wire order",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "contents_fp32_unpacked_short",
+      "category": "tensor_contents",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/contents_fp32_unpacked_short.pb",
+      "grpc_path": "corpus/malicious/contents_fp32_unpacked_short.grpc",
+      "pb_bytes": 89,
+      "grpc_bytes": 94,
+      "notes": "FP32 [4,3,224,224] with four unpacked fp32 values and no raw_input_contents",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "contents_fp32_unpacked_ceiling",
+      "category": "tensor_contents",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/contents_fp32_unpacked_ceiling.pb",
+      "grpc_path": "corpus/malicious/contents_fp32_unpacked_ceiling.grpc",
+      "pb_bytes": 74,
+      "grpc_bytes": 79,
+      "notes": "FP32 [16777216] with one unpacked fp32 value and no raw_input_contents",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "bytes_length_prefix_oversize",
+      "category": "bytes_prefix",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/bytes_length_prefix_oversize.pb",
+      "grpc_path": "corpus/malicious/bytes_length_prefix_oversize.grpc",
+      "pb_bytes": 71,
+      "grpc_bytes": 76,
+      "notes": "BYTES [1] whose little-endian u32 length is 0xFFFFFFFF inside an 8-byte chunk",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "bytes_masks_short_fp32",
+      "category": "bytes_prefix",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/bytes_masks_short_fp32.pb",
+      "grpc_path": "corpus/malicious/bytes_masks_short_fp32.grpc",
+      "pb_bytes": 97,
+      "grpc_bytes": 102,
+      "notes": "FP32 [4] chunk of 4 bytes compensated by a 16-byte BYTES chunk",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "shape_sum_four_ceilings",
+      "category": "shape_budget",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/shape_sum_four_ceilings.pb",
+      "grpc_path": "corpus/malicious/shape_sum_four_ceilings.grpc",
+      "pb_bytes": 126,
+      "grpc_bytes": 131,
+      "notes": "Four FP32 [16777216] tensors and no raw chunks. Declared elements are 4 times the per-tensor ceiling",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "shape_packed_ones",
+      "category": "shape_budget",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/shape_packed_ones.pb",
+      "grpc_path": "corpus/malicious/shape_packed_ones.grpc",
+      "pb_bytes": 100060,
+      "grpc_bytes": 100065,
+      "notes": "One packed shape of 100000 dimensions of 1 (product stays 1). latency_ns is the measurement against the 250 ms ext_proc deadline",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "datatype_fp64_short_raw",
+      "category": "datatype",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/datatype_fp64_short_raw.pb",
+      "grpc_path": "corpus/malicious/datatype_fp64_short_raw.grpc",
+      "pb_bytes": 76,
+      "grpc_bytes": 81,
+      "notes": "FP64 [1,4] with a 16-byte raw chunk (the FP32 length)",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "datatype_unknown_width",
+      "category": "datatype",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/datatype_unknown_width.pb",
+      "grpc_path": "corpus/malicious/datatype_unknown_width.grpc",
+      "pb_bytes": 76,
+      "grpc_bytes": 81,
+      "notes": "Datatype 'FP32 ' (trailing space) on shape [1,4] with a 16-byte raw chunk. Unknown width fails closed",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "frame_single",
+      "category": "framing",
+      "expected": "allow",
+      "pb_path": "corpus/framing/frame_single.body",
+      "grpc_path": "corpus/framing/frame_single.body",
+      "pb_bytes": 57,
+      "grpc_bytes": 57,
+      "notes": "One uncompressed gRPC frame whose declared length equals the body. Sent as the HTTP body, not via tonic",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "http-body"
+    },
+    {
+      "name": "frame_two_concat",
+      "category": "framing",
+      "expected": "reject",
+      "pb_path": "corpus/framing/frame_two_concat.body",
+      "grpc_path": "corpus/framing/frame_two_concat.body",
+      "pb_bytes": 114,
+      "grpc_bytes": 114,
+      "notes": "Two complete frames concatenated in one HTTP body",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "http-body"
+    },
+    {
+      "name": "frame_stream_infer_two",
+      "category": "framing",
+      "expected": "reject",
+      "pb_path": "corpus/framing/frame_stream_infer_two.body",
+      "grpc_path": "corpus/framing/frame_stream_infer_two.body",
+      "pb_bytes": 114,
+      "grpc_bytes": 114,
+      "notes": "ModelStreamInfer is not on the RPC allowlist. The body is also two frames",
+      "method": "/inference.GRPCInferenceService/ModelStreamInfer",
+      "framing": "http-body"
+    },
+    {
+      "name": "rpc_model_infer_empty",
+      "category": "rpc",
+      "expected": "allow",
+      "pb_path": "corpus/rpc/empty_model_infer.pb",
+      "grpc_path": "corpus/rpc/empty_model_infer.grpc",
+      "pb_bytes": 0,
+      "grpc_bytes": 5,
+      "notes": "Empty ModelInfer message. The framed body is a zero-length protobuf",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf"
+    },
+    {
+      "name": "rpc_system_shared_memory_register",
+      "category": "rpc",
+      "expected": "reject",
+      "pb_path": "corpus/rpc/empty_model_infer.pb",
+      "grpc_path": "corpus/rpc/empty_model_infer.grpc",
+      "pb_bytes": 0,
+      "grpc_bytes": 5,
+      "notes": "Header allowlist probe. Expected block is PERMISSION_DENIED or HTTP 403, and the body is not forwarded",
+      "method": "/inference.GRPCInferenceService/SystemSharedMemoryRegister",
+      "framing": "protobuf"
+    },
+    {
+      "name": "rpc_cuda_shared_memory_register",
+      "category": "rpc",
+      "expected": "reject",
+      "pb_path": "corpus/rpc/empty_model_infer.pb",
+      "grpc_path": "corpus/rpc/empty_model_infer.grpc",
+      "pb_bytes": 0,
+      "grpc_bytes": 5,
+      "notes": "Header allowlist probe. Expected block is PERMISSION_DENIED or HTTP 403",
+      "method": "/inference.GRPCInferenceService/CudaSharedMemoryRegister",
+      "framing": "protobuf"
+    },
+    {
+      "name": "rpc_repository_model_load",
+      "category": "rpc",
+      "expected": "reject",
+      "pb_path": "corpus/rpc/empty_model_infer.pb",
+      "grpc_path": "corpus/rpc/empty_model_infer.grpc",
+      "pb_bytes": 0,
+      "grpc_bytes": 5,
+      "notes": "Header allowlist probe. Expected block is PERMISSION_DENIED or HTTP 403",
+      "method": "/inference.GRPCInferenceService/RepositoryModelLoad",
+      "framing": "protobuf"
+    },
+    {
+      "name": "rpc_repository_model_unload",
+      "category": "rpc",
+      "expected": "reject",
+      "pb_path": "corpus/rpc/empty_model_infer.pb",
+      "grpc_path": "corpus/rpc/empty_model_infer.grpc",
+      "pb_bytes": 0,
+      "grpc_bytes": 5,
+      "notes": "Header allowlist probe. Expected block is PERMISSION_DENIED or HTTP 403",
+      "method": "/inference.GRPCInferenceService/RepositoryModelUnload",
+      "framing": "protobuf"
     }
   ]
 }

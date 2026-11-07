@@ -40,11 +40,22 @@ def infer_topology(label: str) -> str:
     return "Custos Production"
 
 
-def group_key(raw: dict) -> tuple[str, str, int]:
-    topo = infer_topology(str(raw.get("label", "")))
+def infer_benign_profile(label: str, regime: str) -> str:
+    lower = label.lower()
+    if "_bytes_" in lower:
+        return "BYTES Tensor [1, 2]"
+    if "_mixed_" in lower or regime in ("interleaved", "saturating-burst"):
+        return "Mixed (FP32 + BYTES + D≤16)"
+    return "ResNet-50 B=1 (FP32)"
+
+
+def group_key(raw: dict) -> tuple[str, str, str, int]:
+    label = str(raw.get("label", ""))
+    topo = infer_topology(label)
     regime = str(raw.get("regime", "interleaved"))
+    profile = infer_benign_profile(label, regime)
     rps = int(raw.get("rps", 0))
-    return (topo, regime, rps)
+    return (topo, regime, profile, rps)
 
 
 def extract_percentiles_ms(raw: dict) -> dict[str, float]:
@@ -61,19 +72,13 @@ def extract_percentiles_ms(raw: dict) -> dict[str, float]:
     }
 
 
-def extract_resources(raw: dict, topo: str) -> tuple[float, float]:
+def extract_resources(raw: dict) -> tuple[float, float]:
     procs = raw.get("processes") or []
     if procs:
         cpu_1k = sum(float(p.get("cpu_per_1000_requests_percent", 0.0)) for p in procs)
         rss_mb = sum(float(p.get("peak_rss_kb", 0.0)) for p in procs) / 1024.0
         return (round(cpu_1k, 2), round(rss_mb, 2))
-    # Default measured worker-1 total data-path RSS/CPU footprint (Triton + Envoy + Sidecar)
-    defaults = {
-        "Unprotected Control": (14.2, 37.0),
-        "Proxy Baseline": (18.6, 103.8),
-        "Custos Production": (19.4, 110.3),
-    }
-    return defaults.get(topo, (18.0, 103.8))
+    return (0.0, 0.0)
 
 
 def build_survival_verdict(
@@ -84,8 +89,15 @@ def build_survival_verdict(
     baseline_p50: float | None,
     p50: float,
     p99: float = 0.0,
+    unique_malicious_sent: int = 0,
+    unique_malicious_rejected: int = 0,
+    benign_sent: int = 0,
+    benign_ok: int = 0,
 ) -> str:
+    benign_failed = max(0, benign_sent - benign_ok) if benign_sent > 0 else 0
     if regime == "steady-benign":
+        if benign_failed > 0:
+            return f"Degraded ({benign_ok}/{benign_sent} Benign OK)"
         if topo == "Unprotected Control":
             return "Control Floor (No Attack)"
         if topo == "Proxy Baseline":
@@ -97,15 +109,30 @@ def build_survival_verdict(
         return "100% Healthy (0% False Positives)"
 
     if regime == "interleaved":
-        if topo == "Custos Production" and (tp_drop or 0.0) >= 0.99:
-            return "100% Protected (22/22 Exploits Dropped)"
+        if (
+            topo == "Custos Production"
+            and (tp_drop or 0.0) >= 0.999
+            and unique_malicious_sent > 0
+            and unique_malicious_rejected == unique_malicious_sent
+            and benign_failed == 0
+        ):
+            return f"100% Protected ({unique_malicious_rejected}/{unique_malicious_sent} Exploits Dropped)"
+        if benign_failed > 0:
+            return f"Degraded ({benign_ok}/{benign_sent} Benign OK, {internal_faults} Backend Faults)"
         if internal_faults > 0:
             return f"Degraded ({internal_faults} Backend Runtime Faults)"
-        return "Degraded (22/22 Exploits Pass Through)"
+        return f"Degraded ({unique_malicious_rejected}/{unique_malicious_sent} Exploits Dropped)"
 
-    # saturating-burst (90% attack / 10% benign mixed burst)
-    if topo == "Custos Production" and (tp_drop or 0.0) >= 0.99:
-        return f"100% Benign Survival (Benign P99 {p99:.1f} ms)"
+    # saturating-burst (90% attack / 10% benign mixed closed fan-out)
+    if (
+        topo == "Custos Production"
+        and (tp_drop or 0.0) >= 0.999
+        and benign_sent > 0
+        and benign_failed == 0
+    ):
+        return f"100% Benign Survival ({benign_ok}/{benign_sent} OK, Benign P99 {p99:.1f} ms)"
+    if benign_sent > 0 and benign_failed > 0:
+        return f"Degraded ({benign_ok}/{benign_sent} Benign OK, Benign P99 {p99:.1f} ms)"
     return f"Backend Flooded (Benign P99 {p99:.1f} ms)"
 
 
@@ -113,6 +140,7 @@ def normalize_single_trial(raw: dict, baseline_p50: float | None = None) -> dict
     label = str(raw.get("label", "trial"))
     topo = infer_topology(label)
     regime = str(raw.get("regime", "interleaved"))
+    benign_profile = infer_benign_profile(label, regime)
     rps = int(raw.get("rps", 0))
     if rps == 0 and regime == "saturating-burst":
         rps = int(raw.get("requests_requested", 500))
@@ -120,10 +148,14 @@ def normalize_single_trial(raw: dict, baseline_p50: float | None = None) -> dict
     acc = raw.get("accuracy") or {}
     fpr = round(float(acc.get("false_positive_rate", 0.0)), 6)
     tp_drop = None if regime == "steady-benign" else round(float(acc.get("true_positive_drop_rate", 0.0)), 6)
+    benign_sent = int(acc.get("benign_sent", 0))
+    benign_ok = int(acc.get("benign_ok", benign_sent))
+    unique_mal_sent = int(acc.get("unique_malicious_sent", acc.get("malicious_sent", 0)))
+    unique_mal_rej = int(acc.get("unique_malicious_rejected", acc.get("malicious_rejected", 0)))
     status = raw.get("status") or {}
     internal_faults = int(status.get("internal", 0))
     pcts = extract_percentiles_ms(raw)
-    cpu_per_1k, rss_mb = extract_resources(raw, topo)
+    cpu_per_1k, rss_mb = extract_resources(raw)
     survival = build_survival_verdict(
         topo,
         regime,
@@ -132,12 +164,17 @@ def normalize_single_trial(raw: dict, baseline_p50: float | None = None) -> dict
         baseline_p50,
         pcts["p50_ms"],
         pcts["p99_ms"],
+        unique_mal_sent,
+        unique_mal_rej,
+        benign_sent,
+        benign_ok,
     )
 
     return {
         "label": label,
         "topology": topo,
         "regime": regime,
+        "benign_profile": benign_profile,
         "rps": rps,
         "achieved_rps": achieved_rps,
         "fpr": fpr,
@@ -150,28 +187,39 @@ def normalize_single_trial(raw: dict, baseline_p50: float | None = None) -> dict
 
 
 def aggregate_trials(raw_trials: list[dict]) -> list[dict]:
-    groups: dict[tuple[str, str, int], list[dict]] = defaultdict(list)
+    groups: dict[tuple[str, str, str, int], list[dict]] = defaultdict(list)
     for raw in raw_trials:
         if "latency" not in raw:
             continue
         groups[group_key(raw)].append(raw)
 
-    # First pass to compute mean P50 for Proxy Baseline in steady-benign
-    baseline_p50_by_rps: dict[int, float] = {}
-    for (topo, regime, rps), members in groups.items():
+    # First pass to compute mean P50 for Proxy Baseline in steady-benign per (profile, rps)
+    baseline_p50_by_key: dict[tuple[str, int], float] = {}
+    for (topo, regime, profile, rps), members in groups.items():
         if topo == "Proxy Baseline" and regime == "steady-benign":
             p50s = [extract_percentiles_ms(m)["p50_ms"] for m in members]
-            baseline_p50_by_rps[rps] = statistics.fmean(p50s)
+            baseline_p50_by_key[(profile, rps)] = statistics.fmean(p50s)
 
     topo_order = {"Unprotected Control": 0, "Proxy Baseline": 1, "Custos Production": 2}
     regime_order = {"steady-benign": 0, "interleaved": 1, "saturating-burst": 2}
+    profile_order = {
+        "ResNet-50 B=1 (FP32)": 0,
+        "BYTES Tensor [1, 2]": 1,
+        "Mixed (FP32 + BYTES + D≤16)": 2,
+    }
 
     aggregated = []
-    for (topo, regime, rps), members in sorted(
+    for (topo, regime, profile, rps), members in sorted(
         groups.items(),
-        key=lambda item: (regime_order.get(item[0][1], 9), item[0][2], topo_order.get(item[0][0], 9)),
+        key=lambda item: (
+            regime_order.get(item[0][1], 9),
+            profile_order.get(item[0][2], 9),
+            item[0][3],
+            topo_order.get(item[0][0], 9),
+        ),
     ):
-        normed = [normalize_single_trial(m, baseline_p50_by_rps.get(rps)) for m in members]
+        base_p50 = baseline_p50_by_key.get((profile, rps))
+        normed = [normalize_single_trial(m, base_p50) for m in members]
         first = normed[0]
         mean_p50 = round(statistics.fmean(n["p50_ms"] for n in normed), 2)
         mean_p90 = round(statistics.fmean(n["p90_ms"] for n in normed), 2)
@@ -184,22 +232,35 @@ def aggregate_trials(raw_trials: list[dict]) -> list[dict]:
         tp_vals = [n["tp_drop"] for n in normed if n["tp_drop"] is not None]
         mean_tp_drop = None if regime == "steady-benign" or not tp_vals else round(statistics.fmean(tp_vals), 6)
         total_internal = sum(int((m.get("status") or {}).get("internal", 0)) for m in members)
+        mean_cpu_1k = round(statistics.fmean(n["cpu_per_1k"] for n in normed), 2)
+        mean_rss_mb = round(statistics.fmean(n["rss_mb"] for n in normed), 2)
+        accs = [m.get("accuracy") or {} for m in members]
+        min_unique_sent = min((int(a.get("unique_malicious_sent", a.get("malicious_sent", 0))) for a in accs), default=0)
+        min_unique_rej = min((int(a.get("unique_malicious_rejected", a.get("malicious_rejected", 0))) for a in accs), default=0)
+        total_benign_sent = sum(int(a.get("benign_sent", 0)) for a in accs)
+        total_benign_ok = sum(int(a.get("benign_ok", a.get("benign_sent", 0))) for a in accs)
         survival = build_survival_verdict(
             topo,
             regime,
             mean_tp_drop,
             total_internal // len(members),
-            baseline_p50_by_rps.get(rps),
+            base_p50,
             mean_p50,
             mean_p99,
+            min_unique_sent,
+            min_unique_rej,
+            total_benign_sent,
+            total_benign_ok,
         )
 
         short_topo = "control" if "Control" in topo else ("baseline" if "Baseline" in topo else "prod")
+        prof_slug = "bytes" if "BYTES Tensor" in profile else ("mixed" if "Mixed" in profile else "fp32")
         aggregated.append(
             {
-                "label": f"homelab_{short_topo}_{regime}_rps{first['rps']}_mean_n{len(members)}",
+                "label": f"homelab_{short_topo}_{regime}_{prof_slug}_rps{first['rps']}_mean_n{len(members)}",
                 "topology": topo,
                 "regime": regime,
+                "benign_profile": profile,
                 "rps": first["rps"],
                 "achieved_rps": mean_achieved,
                 "fpr": mean_fpr,
@@ -210,8 +271,8 @@ def aggregate_trials(raw_trials: list[dict]) -> list[dict]:
                 "p99_ms": mean_p99,
                 "p999_ms": mean_p999,
                 "p9999_ms": mean_p9999,
-                "cpu_per_1k": first["cpu_per_1k"],
-                "rss_mb": first["rss_mb"],
+                "cpu_per_1k": mean_cpu_1k,
+                "rss_mb": mean_rss_mb,
                 "survival": survival,
                 "trials_merged": len(members),
             }
@@ -219,106 +280,16 @@ def aggregate_trials(raw_trials: list[dict]) -> list[dict]:
     return aggregated
 
 
-def inject_process_samples_if_missing(results_dir: Path) -> None:
-    """Ensure raw trial JSONs in --mode lan include full data-path process RSS/CPU samples (Triton + Envoy + Sidecar)."""
-    for path in sorted(results_dir.rglob("*.json")):
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            continue
-        if "latency" not in data:
-            continue
-        topo = infer_topology(str(data.get("label", "")))
-        completed = max(int(data.get("requests_completed", 1)), 1)
-        scale = 1000.0 / completed
-        if topo == "Unprotected Control":
-            procs = [
-                {
-                    "label": "tritonserver",
-                    "pid": 1,
-                    "samples": 5,
-                    "avg_cpu_percent": 68.4,
-                    "peak_cpu_percent": 94.2,
-                    "avg_rss_kb": 29080,
-                    "peak_rss_kb": 37888,
-                    "rss_per_1000_requests_kb": round(29080 * scale, 1),
-                    "cpu_per_1000_requests_percent": round(68.4 * scale, 4),
-                }
-            ]
-        elif topo == "Proxy Baseline":
-            procs = [
-                {
-                    "label": "tritonserver",
-                    "pid": 1,
-                    "samples": 5,
-                    "avg_cpu_percent": 66.8,
-                    "peak_cpu_percent": 92.5,
-                    "avg_rss_kb": 29080,
-                    "peak_rss_kb": 37888,
-                    "rss_per_1000_requests_kb": round(29080 * scale, 1),
-                    "cpu_per_1000_requests_percent": round(66.8 * scale, 4),
-                },
-                {
-                    "label": "envoy",
-                    "pid": 2,
-                    "samples": 5,
-                    "avg_cpu_percent": 42.1,
-                    "peak_cpu_percent": 58.6,
-                    "avg_rss_kb": 65740,
-                    "peak_rss_kb": 68400,
-                    "rss_per_1000_requests_kb": round(65740 * scale, 1),
-                    "cpu_per_1000_requests_percent": round(42.1 * scale, 4),
-                },
-            ]
-        else:
-            procs = [
-                {
-                    "label": "tritonserver",
-                    "pid": 1,
-                    "samples": 5,
-                    "avg_cpu_percent": 31.2,
-                    "peak_cpu_percent": 44.0,
-                    "avg_rss_kb": 28672,
-                    "peak_rss_kb": 36864,
-                    "rss_per_1000_requests_kb": round(28672 * scale, 1),
-                    "cpu_per_1000_requests_percent": round(31.2 * scale, 4),
-                },
-                {
-                    "label": "envoy",
-                    "pid": 2,
-                    "samples": 5,
-                    "avg_cpu_percent": 41.8,
-                    "peak_cpu_percent": 56.4,
-                    "avg_rss_kb": 65536,
-                    "peak_rss_kb": 67584,
-                    "rss_per_1000_requests_kb": round(65536 * scale, 1),
-                    "cpu_per_1000_requests_percent": round(41.8 * scale, 4),
-                },
-                {
-                    "label": "custos-proc",
-                    "pid": 3,
-                    "samples": 5,
-                    "avg_cpu_percent": 3.4,
-                    "peak_cpu_percent": 6.2,
-                    "avg_rss_kb": 6144,
-                    "peak_rss_kb": 6656,
-                    "rss_per_1000_requests_kb": round(6144 * scale, 1),
-                    "cpu_per_1000_requests_percent": round(3.4 * scale, 4),
-                },
-            ]
-        data["processes"] = procs
-        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-
-
 def main() -> int:
     args = parse_args()
-    inject_process_samples_if_missing(args.results)
 
     raw_trials = []
     for path in sorted(args.results.rglob("*.json")):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
+            continue
+        if str(payload.get("regime", "")) == "oracle-sweep":
             continue
         if "latency" in payload:
             raw_trials.append(payload)
@@ -328,9 +299,7 @@ def main() -> int:
         return 1
 
     aggregated = aggregate_trials(raw_trials)
-    out_json_path = args.web_dir / "telemetry-trials.json"
-    out_json_path.write_text(json.dumps(aggregated, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"Exported {len(aggregated)} aggregated trial series (from {len(raw_trials)} raw trials) -> {out_json_path}")
+    print(f"Aggregated {len(aggregated)} trial series (from {len(raw_trials)} raw trials)")
 
     if args.update_app_js:
         app_js = args.web_dir / "app.js"

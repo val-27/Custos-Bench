@@ -246,6 +246,8 @@ dependencies = [
  "hdrhistogram",
  "http",
  "http-body-util",
+ "hyper",
+ "hyper-util",
  "quanta",
  "serde",
  "serde_json",

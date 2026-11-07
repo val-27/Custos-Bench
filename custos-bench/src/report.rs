@@ -44,6 +44,9 @@ pub struct StatusCounts {
     pub unavailable: u64,
     pub internal: u64,
     pub http_400: u64,
+    /// Header-allowlist blocks. Counted here, and not in [`is_admission_reject`].
+    #[serde(default)]
+    pub permission_denied: u64,
     pub deadline_exceeded: u64,
     pub other: u64,
     pub transport: u64,
@@ -57,6 +60,7 @@ impl StatusCounts {
             + self.unavailable
             + self.internal
             + self.http_400
+            + self.permission_denied
             + self.deadline_exceeded
             + self.other
             + self.transport
@@ -66,9 +70,12 @@ impl StatusCounts {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct Accuracy {
     pub benign_sent: u64,
+    pub benign_ok: u64,
     pub benign_rejected: u64,
     pub malicious_sent: u64,
     pub malicious_rejected: u64,
+    pub unique_malicious_sent: usize,
+    pub unique_malicious_rejected: usize,
     pub false_positive_rate: f64,
     pub true_positive_drop_rate: f64,
 }
@@ -76,17 +83,23 @@ pub struct Accuracy {
 impl Accuracy {
     pub fn from_counts(
         benign_sent: u64,
+        benign_ok: u64,
         benign_rejected: u64,
         malicious_sent: u64,
         malicious_rejected: u64,
+        unique_malicious_sent: usize,
+        unique_malicious_rejected: usize,
     ) -> Self {
         let false_positive_rate = ratio(benign_rejected, benign_sent);
         let true_positive_drop_rate = ratio(malicious_rejected, malicious_sent);
         Self {
             benign_sent,
+            benign_ok,
             benign_rejected,
             malicious_sent,
             malicious_rejected,
+            unique_malicious_sent,
+            unique_malicious_rejected,
             false_positive_rate,
             true_positive_drop_rate,
         }
@@ -121,6 +134,28 @@ pub struct TrialReport {
     pub goodput: Goodput,
     pub wire: Option<WireThroughput>,
     pub processes: Vec<ProcessSample>,
+    /// Per-payload oracle sweep rows. Empty for the open-loop regimes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub oracle: Vec<OracleRow>,
+}
+
+/// One manifest entry scored by `--regime oracle-sweep`.
+///
+/// `matched` is true when `expected` is `allow` and `status` is `OK`, or
+/// when `expected` is `reject` and `status` is `INVALID_ARGUMENT`,
+/// `HTTP_400`, or `PERMISSION_DENIED`. `INTERNAL` does not match a reject.
+#[derive(Debug, Clone, Serialize)]
+pub struct OracleRow {
+    pub name: String,
+    pub expected: String,
+    pub status: String,
+    #[serde(rename = "match")]
+    pub matched: bool,
+    pub tx_bytes: u64,
+    pub rx_bytes: u64,
+    pub latency_ns: u64,
+    pub method: String,
+    pub framing: String,
 }
 
 pub fn summarize(name: &str, hist: &Histogram<u64>) -> LatencySummary {
@@ -194,10 +229,11 @@ pub fn print_summary(report: &TrialReport, mut out: impl Write) -> io::Result<()
     let status = &report.status;
     writeln!(
         out,
-        "status  ok={}  invalid_argument={}  http_400={}  unavailable={}  internal={}  deadline={}  other={}  transport={}",
+        "status  ok={}  invalid_argument={}  http_400={}  permission_denied={}  unavailable={}  internal={}  deadline={}  other={}  transport={}",
         status.ok,
         status.invalid_argument,
         status.http_400,
+        status.permission_denied,
         status.unavailable,
         status.internal,
         status.deadline_exceeded,
@@ -226,6 +262,69 @@ pub fn print_summary(report: &TrialReport, mut out: impl Write) -> io::Result<()
             proc.peak_rss_kb,
             proc.cpu_per_1000_requests_percent,
             proc.rss_per_1000_requests_kb
+        )?;
+    }
+    write_oracle_table(report, &mut out)?;
+    Ok(())
+}
+
+fn write_oracle_table(report: &TrialReport, out: &mut impl Write) -> io::Result<()> {
+    if report.oracle.is_empty() {
+        return Ok(());
+    }
+    if report.oracle.iter().all(|row| row.status == "DRY_RUN") {
+        writeln!(
+            out,
+            "oracle  dry-run  cases={}  (no RPC; match stays no)",
+            report.oracle.len()
+        )?;
+    } else {
+        let mut reject_sent = 0u64;
+        let mut reject_blocked = 0u64;
+        let mut allow_sent = 0u64;
+        let mut allow_ok = 0u64;
+        for row in &report.oracle {
+            match row.expected.as_str() {
+                "reject" => {
+                    reject_sent += 1;
+                    if row.matched {
+                        reject_blocked += 1;
+                    }
+                }
+                "allow" => {
+                    allow_sent += 1;
+                    if row.matched {
+                        allow_ok += 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let mismatch = report.oracle.iter().filter(|row| !row.matched).count();
+        writeln!(
+            out,
+            "oracle  reject-blocked={reject_blocked}/{reject_sent}  allow-ok={allow_ok}/{allow_sent}  mismatch={mismatch}"
+        )?;
+    }
+    writeln!(
+        out,
+        "{:<36} {:<8} {:<18} {:<5} {:>10} {:>10} {:>12}  method",
+        "name", "expected", "status", "match", "tx_bytes", "rx_bytes", "latency_ns"
+    )?;
+    for row in &report.oracle {
+        let flag = if row.matched { "yes" } else { "no" };
+        writeln!(
+            out,
+            "{:<36} {:<8} {:<18} {:<5} {:>10} {:>10} {:>12}  {} [{}]",
+            row.name,
+            row.expected,
+            row.status,
+            flag,
+            row.tx_bytes,
+            row.rx_bytes,
+            row.latency_ns,
+            row.method,
+            row.framing
         )?;
     }
     Ok(())
@@ -309,8 +408,21 @@ fn sanitize(label: &str) -> String {
 ///
 /// A malicious rejection is `INVALID_ARGUMENT` or an HTTP 400 mapped by the
 /// proxy. Benign traffic that lands in either bucket is a false positive.
+///
+/// `PERMISSION_DENIED` is a header-allowlist block scored by the oracle
+/// sweep. It stays out of this predicate so published true-positive rates
+/// for the open-loop regimes do not change.
 pub fn is_admission_reject(code: &str) -> bool {
     matches!(code, "INVALID_ARGUMENT" | "HTTP_400")
+}
+
+/// Sweep matcher. `INTERNAL` is not a block.
+pub fn oracle_matches(expected: &str, status: &str) -> bool {
+    match expected {
+        "allow" => status == "OK",
+        "reject" => matches!(status, "INVALID_ARGUMENT" | "HTTP_400" | "PERMISSION_DENIED"),
+        _ => false,
+    }
 }
 
 pub fn classify_status(code: &str, counts: &mut StatusCounts) {
@@ -320,6 +432,7 @@ pub fn classify_status(code: &str, counts: &mut StatusCounts) {
         "UNAVAILABLE" => counts.unavailable += 1,
         "INTERNAL" => counts.internal += 1,
         "HTTP_400" => counts.http_400 += 1,
+        "PERMISSION_DENIED" => counts.permission_denied += 1,
         "DEADLINE_EXCEEDED" => counts.deadline_exceeded += 1,
         "TRANSPORT" => counts.transport += 1,
         _ => counts.other += 1,
@@ -348,7 +461,7 @@ mod tests {
 
     #[test]
     fn accuracy_rates_are_ratios_of_rejected_to_sent() {
-        let accuracy = Accuracy::from_counts(99, 1, 1, 1);
+        let accuracy = Accuracy::from_counts(99, 98, 1, 1, 1, 1, 1);
         assert!((accuracy.false_positive_rate - 1.0 / 99.0).abs() < 1e-12);
         assert!((accuracy.true_positive_drop_rate - 1.0).abs() < 1e-12);
     }
@@ -359,5 +472,31 @@ mod tests {
         assert!(is_admission_reject("HTTP_400"));
         assert!(!is_admission_reject("OK"));
         assert!(!is_admission_reject("UNAVAILABLE"));
+        assert!(!is_admission_reject("PERMISSION_DENIED"));
+        assert!(!is_admission_reject("INTERNAL"));
+    }
+
+    #[test]
+    fn oracle_match_accepts_allow_ok_and_reject_blocks_only() {
+        assert!(oracle_matches("allow", "OK"));
+        assert!(!oracle_matches("allow", "INVALID_ARGUMENT"));
+        assert!(!oracle_matches("allow", "PERMISSION_DENIED"));
+        assert!(oracle_matches("reject", "INVALID_ARGUMENT"));
+        assert!(oracle_matches("reject", "HTTP_400"));
+        assert!(oracle_matches("reject", "PERMISSION_DENIED"));
+        assert!(!oracle_matches("reject", "OK"));
+        assert!(!oracle_matches("reject", "INTERNAL"));
+        assert!(!oracle_matches("reject", "DRY_RUN"));
+        assert!(!oracle_matches("maybe", "OK"));
+    }
+
+    #[test]
+    fn permission_denied_has_its_own_counter() {
+        let mut counts = StatusCounts::default();
+        classify_status("PERMISSION_DENIED", &mut counts);
+        classify_status("INVALID_ARGUMENT", &mut counts);
+        assert_eq!(counts.permission_denied, 1);
+        assert_eq!(counts.invalid_argument, 1);
+        assert_eq!(counts.other, 0);
     }
 }

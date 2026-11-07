@@ -8,6 +8,7 @@ from pathlib import Path
 
 from benign_generator import BATCH_SIZES, generate_benign
 from exploit_generator import generate_exploits
+from oracle_generator import generate_oracle, validate_corpus
 from wire_utils import write_manifest
 
 
@@ -36,6 +37,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=list(BATCH_SIZES),
         help="benign batch sizes to emit (default: 1 2 4 8 16)",
     )
+    parser.add_argument(
+        "--include-ceiling-blob",
+        action="store_true",
+        help="also write benign_fp32_ceiling, a 64 MiB raw chunk (off by default)",
+    )
     return parser.parse_args(argv)
 
 
@@ -55,9 +61,14 @@ def main(argv: list[str] | None = None) -> int:
         batch_sizes=tuple(args.batch_sizes),
     )
     malicious = generate_exploits(corpus_dir)
-    artifacts = benign + malicious
+    oracle = generate_oracle(
+        corpus_dir,
+        include_ceiling_blob=args.include_ceiling_blob,
+    )
+    artifacts = benign + malicious + oracle
     manifest_path = corpus_dir / "manifest.json"
     write_manifest(manifest_path, artifacts)
+    validate_corpus(corpus_dir, ceiling=args.include_ceiling_blob)
 
     print(f"wrote {len(artifacts)} payloads to {corpus_dir}")
     for artifact in artifacts:

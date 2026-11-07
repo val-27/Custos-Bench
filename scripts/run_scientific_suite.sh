@@ -46,6 +46,7 @@ TRITON_CMD=""
 ENVOY_CMD=""
 CUSTOS_CMD=""
 SKIP_BURST=0
+SWEEP=0
 
 usage() {
   sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
@@ -66,6 +67,7 @@ Options:
   --cores-triton/--cores-envoy/--cores-custos/--cores-bench
   --triton-cmd/--envoy-cmd/--custos-cmd   optional launch commands
   --skip-burst
+  --sweep                   one oracle-sweep per topology (default off)
 EOF
 }
 
@@ -94,6 +96,7 @@ while [[ $# -gt 0 ]]; do
     --envoy-cmd) ENVOY_CMD="$2"; shift 2 ;;
     --custos-cmd) CUSTOS_CMD="$2"; shift 2 ;;
     --skip-burst) SKIP_BURST=1; shift ;;
+    --sweep) SWEEP=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown argument: $1" >&2; usage; exit 2 ;;
   esac
@@ -194,5 +197,13 @@ for spec in "${topologies[@]}"; do
     fi
   done
 done
+
+if [[ "${SWEEP}" -eq 1 ]]; then
+  for spec in "${topologies[@]}"; do
+    topology="${spec%%:*}"
+    port="${spec##*:}"
+    run_bench "${topology}" "oracle-sweep" "0" "1" "${port}"
+  done
+fi
 
 echo "suite complete: ${OUT}/${MODE}"

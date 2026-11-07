@@ -5,6 +5,7 @@
 //! server. Service time `S_k = T_completed - T_actual_send` is kept separately
 //! so a closed-loop tool's optimistic latency can be compared after the fact.
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -38,7 +39,9 @@ pub struct Payload {
 #[derive(Debug, Clone)]
 pub struct Corpus {
     pub benign: Vec<Payload>,
+    pub mixed_benign: Vec<Payload>,
     pub malicious: Vec<Payload>,
+    pub rotate_steady: bool,
 }
 
 impl Corpus {
@@ -49,6 +52,28 @@ impl Corpus {
         if benign.is_empty() {
             return Err(anyhow!("no .pb payloads in {}", benign_dir.display()));
         }
+        let mut malicious = if malicious_dir.is_dir() {
+            load_dir(&malicious_dir, true)?
+        } else {
+            Vec::new()
+        };
+        // Move D<=16 boundary-acceptance test cases (`nesting_depth_15`, `nesting_depth_16`)
+        // from the malicious directory into the benign pool (`malicious = false`) so that:
+        //   1. Active attack slots only fire payloads whose expected admission outcome is `reject`.
+        //   2. Benign traffic slots also exercise D=15/16 boundary acceptance without false positives.
+        let mut boundary_benign = Vec::new();
+        malicious.retain(|p| {
+            if p.name == "nesting_depth_15" || p.name == "nesting_depth_16" {
+                let mut b = p.clone();
+                b.malicious = false;
+                boundary_benign.push(b);
+                false
+            } else {
+                true
+            }
+        });
+        benign.extend(boundary_benign);
+
         if let Some(index) = benign.iter().position(|p| p.name == benign_stem) {
             let chosen = benign.remove(index);
             benign.insert(0, chosen);
@@ -58,38 +83,58 @@ impl Corpus {
                 benign_dir.display()
             ));
         }
-        let mut malicious = if malicious_dir.is_dir() {
-            load_dir(&malicious_dir, true)?
-        } else {
-            Vec::new()
-        };
-        // Exclude D<=16 boundary-acceptance test cases (`nesting_depth_15`, `nesting_depth_16`)
-        // so that active attack regimes (`interleaved`, `saturating-burst`) only fire payloads
-        // whose expected admission outcome is `reject`.
-        malicious.retain(|p| p.name != "nesting_depth_15" && p.name != "nesting_depth_16");
-        Ok(Self { benign, malicious })
+
+        // Build the multi-packet benign rotation pool (`benign_b1`, `benign_bytes_tensor`,
+        // `nesting_depth_15`, `nesting_depth_16`) used in `interleaved`, `saturating-burst`,
+        // and `--batch all` steady-benign runs.
+        let mut mixed_benign: Vec<Payload> = Vec::new();
+        mixed_benign.push(benign[0].clone());
+        for candidate in ["benign_b1", "benign_bytes_tensor", "nesting_depth_15", "nesting_depth_16"] {
+            if let Some(p) = benign.iter().find(|p| p.name == candidate) {
+                if !mixed_benign.iter().any(|m| m.name == p.name) {
+                    mixed_benign.push(p.clone());
+                }
+            }
+        }
+
+        Ok(Self {
+            benign,
+            mixed_benign,
+            malicious,
+            rotate_steady: benign_stem == "all",
+        })
     }
 
     pub fn select(&self, regime: Regime, index: u64, malicious_percent: u64) -> &Payload {
         match regime {
-            Regime::SteadyBenign => &self.benign[0],
+            Regime::SteadyBenign => {
+                if self.rotate_steady {
+                    &self.mixed_benign[index as usize % self.mixed_benign.len()]
+                } else {
+                    &self.benign[0]
+                }
+            }
             Regime::Interleaved => {
                 let period = (100 / malicious_percent.max(1)).max(1);
                 if !self.malicious.is_empty() && index % period == period - 1 {
                     &self.malicious[(index / period) as usize % self.malicious.len()]
                 } else {
-                    &self.benign[0]
+                    &self.mixed_benign[index as usize % self.mixed_benign.len()]
                 }
             }
             Regime::SaturatingBurst => {
-                // Mix 10% benign requests (every 10th request) into the 2,000-concurrency burst
+                // Mix 10% benign requests (every 10th request) into the burst fan-out,
+                // rotating across benign packet families (`benign_b1`, `benign_bytes_tensor`, `D<=16`),
                 // so operators can measure legitimate user P99 latency and survival under fire.
                 if self.malicious.is_empty() || index.is_multiple_of(10) {
-                    &self.benign[0]
+                    &self.mixed_benign[(index / 10) as usize % self.mixed_benign.len()]
                 } else {
-                    &self.malicious[index as usize % self.malicious.len()]
+                    let mal_idx = index - (index / 10) - 1;
+                    &self.malicious[mal_idx as usize % self.malicious.len()]
                 }
             }
+            // The sweep sends manifest entries itself and does not use this rotation.
+            Regime::OracleSweep => &self.benign[0],
         }
     }
 }
@@ -119,13 +164,14 @@ fn load_dir(dir: &Path, malicious: bool) -> Result<Vec<Payload>> {
 }
 
 #[derive(Debug)]
-struct Observation {
-    latency_ns: u64,
-    service_ns: u64,
-    malicious: bool,
-    status: &'static str,
-    tx_bytes: u64,
-    rx_bytes: u64,
+pub(crate) struct Observation {
+    pub(crate) name: String,
+    pub(crate) latency_ns: u64,
+    pub(crate) service_ns: u64,
+    pub(crate) malicious: bool,
+    pub(crate) status: &'static str,
+    pub(crate) tx_bytes: u64,
+    pub(crate) rx_bytes: u64,
 }
 
 struct SharedHistograms {
@@ -135,9 +181,12 @@ struct SharedHistograms {
     malicious: Histogram<u64>,
     status: StatusCounts,
     benign_sent: u64,
+    benign_ok: u64,
     benign_rejected: u64,
     malicious_sent: u64,
     malicious_rejected: u64,
+    unique_malicious_sent: BTreeSet<String>,
+    unique_malicious_rejected: BTreeSet<String>,
     tx_bytes: u64,
     rx_bytes: u64,
 }
@@ -151,9 +200,12 @@ impl SharedHistograms {
             malicious: new_histogram(),
             status: StatusCounts::default(),
             benign_sent: 0,
+            benign_ok: 0,
             benign_rejected: 0,
             malicious_sent: 0,
             malicious_rejected: 0,
+            unique_malicious_sent: BTreeSet::new(),
+            unique_malicious_rejected: BTreeSet::new(),
             tx_bytes: 0,
             rx_bytes: 0,
         }
@@ -167,12 +219,17 @@ impl SharedHistograms {
         if obs.malicious {
             self.malicious.saturating_record(obs.latency_ns.max(1));
             self.malicious_sent += 1;
+            self.unique_malicious_sent.insert(obs.name.clone());
             if rejected {
                 self.malicious_rejected += 1;
+                self.unique_malicious_rejected.insert(obs.name);
             }
         } else {
             self.benign.saturating_record(obs.latency_ns.max(1));
             self.benign_sent += 1;
+            if obs.status == "OK" {
+                self.benign_ok += 1;
+            }
             if rejected {
                 self.benign_rejected += 1;
             }
@@ -183,6 +240,9 @@ impl SharedHistograms {
 }
 
 pub async fn execute(cli: &Cli, clock: &Clock) -> Result<TrialReport> {
+    if cli.regime == Regime::OracleSweep {
+        return crate::oracle::execute_sweep(cli, clock).await;
+    }
     let corpus = Corpus::load(&cli.corpus, &cli.batch)?;
     if cli.dry_run {
         return Ok(dry_report(cli, &corpus));
@@ -217,6 +277,7 @@ pub async fn execute(cli: &Cli, clock: &Clock) -> Result<TrialReport> {
         Regime::SteadyBenign | Regime::Interleaved => {
             run_open_loop(cli, clock, &corpus, channel, path, t0, &stop, &completed).await?
         }
+        Regime::OracleSweep => unreachable!("oracle-sweep returns before the open-loop match"),
     };
     stop.store(true, Ordering::Relaxed);
     let elapsed = started.elapsed();
@@ -231,7 +292,7 @@ pub async fn execute(cli: &Cli, clock: &Clock) -> Result<TrialReport> {
         _ => None,
     };
 
-    Ok(assemble(cli, observations, elapsed, process_samples, wire))
+    Ok(assemble(cli, observations, elapsed, process_samples, wire, Vec::new()))
 }
 
 fn sample_loop(mut sampler: telemetry::ProcSampler, stop: Arc<AtomicBool>) -> Vec<ProcessSample> {
@@ -244,7 +305,7 @@ fn sample_loop(mut sampler: telemetry::ProcSampler, stop: Arc<AtomicBool>) -> Ve
     sampler.finish(0)
 }
 
-fn endpoint(target: &str, timeout_ms: u64, _max_message: usize) -> Result<Endpoint> {
+pub(crate) fn endpoint(target: &str, timeout_ms: u64, _max_message: usize) -> Result<Endpoint> {
     let mut endpoint = Endpoint::from_shared(target.to_string()).context("parsing target URI")?;
     endpoint = endpoint
         .timeout(Duration::from_millis(timeout_ms))
@@ -287,10 +348,7 @@ async fn run_open_loop(
         wait_until(clock, t0, scheduled_ns).await;
 
         let payload = corpus.select(cli.regime, index, cli.malicious_percent).clone();
-        let permit = Arc::clone(&limit)
-            .acquire_owned()
-            .await
-            .map_err(|_| anyhow!("concurrency semaphore closed"))?;
+        let limit_clone = Arc::clone(&limit);
         let mut grpc = tonic::client::Grpc::new(channel.clone())
             .max_decoding_message_size(cli.max_message_bytes)
             .max_encoding_message_size(cli.max_message_bytes);
@@ -298,7 +356,7 @@ async fn run_open_loop(
         let clock = clock.clone();
         let timeout = Duration::from_millis(cli.timeout_ms);
         tasks.push(tokio::spawn(async move {
-            let _permit = permit;
+            let _permit = limit_clone.acquire_owned().await.ok();
             let actual_send = clock.raw();
             let compressed = payload.name == "grpc_compressed_flag_01";
             let status = unary(&mut grpc, path, payload.bytes.clone(), compressed, timeout).await;
@@ -309,6 +367,7 @@ async fn run_open_loop(
                 .saturating_sub(scheduled_ns as u128) as u64;
             let service_ns = clock.delta(actual_send, completed_at).as_nanos() as u64;
             Observation {
+                name: payload.name,
                 latency_ns,
                 service_ns,
                 malicious: payload.malicious,
@@ -357,6 +416,7 @@ async fn run_burst(
             let status = unary(&mut grpc, path, payload.bytes.clone(), compressed, timeout).await;
             let completed_at = clock.raw();
             Observation {
+                name: payload.name,
                 latency_ns: clock.delta(t0, completed_at).as_nanos() as u64,
                 service_ns: clock.delta(actual_send, completed_at).as_nanos() as u64,
                 malicious: payload.malicious,
@@ -377,7 +437,7 @@ async fn run_burst(
     Ok(observations)
 }
 
-async fn unary(
+pub(crate) async fn unary(
     grpc: &mut tonic::client::Grpc<Channel>,
     path: PathAndQuery,
     payload: Bytes,
@@ -404,8 +464,11 @@ async fn unary(
     }
 }
 
-fn status_label(status: &tonic::Status) -> &'static str {
+pub(crate) fn status_label(status: &tonic::Status) -> &'static str {
     let message = status.message();
+    if message.contains("403") || message.contains("unauthorized_rpc") {
+        return "PERMISSION_DENIED";
+    }
     if message.contains("400") {
         return "HTTP_400";
     }
@@ -415,6 +478,7 @@ fn status_label(status: &tonic::Status) -> &'static str {
         tonic::Code::Unavailable => "UNAVAILABLE",
         tonic::Code::Internal => "INTERNAL",
         tonic::Code::DeadlineExceeded => "DEADLINE_EXCEEDED",
+        tonic::Code::PermissionDenied => "PERMISSION_DENIED",
         _ => "OTHER",
     }
 }
@@ -440,12 +504,13 @@ async fn wait_until(clock: &Clock, t0: u64, offset_ns: u64) {
     }
 }
 
-fn assemble(
+pub(crate) fn assemble(
     cli: &Cli,
     observations: Vec<Observation>,
     elapsed: Duration,
     mut processes: Vec<ProcessSample>,
     wire: Option<WireThroughput>,
+    oracle: Vec<crate::report::OracleRow>,
 ) -> TrialReport {
     let mut histograms = SharedHistograms::new();
     for obs in observations {
@@ -463,16 +528,28 @@ fn assemble(
     }
     let secs = elapsed.as_secs_f64().max(1e-9);
     let goodput: Goodput = telemetry::goodput(histograms.tx_bytes, histograms.rx_bytes, elapsed);
-    let separate = matches!(cli.regime, Regime::Interleaved | Regime::SaturatingBurst);
+    let separate = matches!(
+        cli.regime,
+        Regime::Interleaved | Regime::SaturatingBurst | Regime::OracleSweep
+    ) && (histograms.benign_sent + histograms.malicious_sent) > 0;
+    let requests_requested = if matches!(cli.regime, Regime::OracleSweep) {
+        oracle.len() as u64
+    } else {
+        cli.requests
+    };
     TrialReport {
         label: cli.label.clone(),
         regime: regime_name(cli.regime).to_string(),
         target: cli.target.clone(),
         rps: cli.rps,
-        requests_requested: cli.requests,
+        requests_requested,
         requests_completed: completed,
         elapsed_secs: secs,
-        offered_rps: cli.rps as f64,
+        offered_rps: if matches!(cli.regime, Regime::SaturatingBurst | Regime::OracleSweep) {
+            0.0
+        } else {
+            cli.rps as f64
+        },
         achieved_rps: completed as f64 / secs,
         latency: crate::report::summarize("latency_co", &histograms.latency),
         service_time: crate::report::summarize("service_time", &histograms.service),
@@ -481,13 +558,17 @@ fn assemble(
         status: histograms.status,
         accuracy: Accuracy::from_counts(
             histograms.benign_sent,
+            histograms.benign_ok,
             histograms.benign_rejected,
             histograms.malicious_sent,
             histograms.malicious_rejected,
+            histograms.unique_malicious_sent.len(),
+            histograms.unique_malicious_rejected.len(),
         ),
         goodput,
         wire,
         processes,
+        oracle,
     }
 }
 
@@ -514,6 +595,7 @@ fn dry_report(cli: &Cli, corpus: &Corpus) -> TrialReport {
         goodput: Goodput::default(),
         wire: None,
         processes: Vec::new(),
+        oracle: Vec::new(),
     }
 }
 
@@ -522,6 +604,7 @@ pub fn regime_name(regime: Regime) -> &'static str {
         Regime::SteadyBenign => "steady-benign",
         Regime::Interleaved => "interleaved",
         Regime::SaturatingBurst => "saturating-burst",
+        Regime::OracleSweep => "oracle-sweep",
     }
 }
 
@@ -602,13 +685,31 @@ mod tests {
     #[test]
     fn burst_mixes_ten_percent_benign_with_ninety_percent_malicious() {
         let dir = temp_corpus();
+        std::fs::write(dir.join("benign/benign_bytes_tensor.pb"), b"\x0a\x08resnet50").unwrap();
+        std::fs::write(dir.join("malicious/nesting_depth_16.pb"), b"\x2a\x02\x08\x01").unwrap();
         let corpus = Corpus::load(&dir, "benign_b1").unwrap();
+        assert_eq!(corpus.mixed_benign.len(), 3);
         let zero = corpus.select(Regime::SaturatingBurst, 0, 1);
+        let ten = corpus.select(Regime::SaturatingBurst, 10, 1);
+        let twenty = corpus.select(Regime::SaturatingBurst, 20, 1);
         let first = corpus.select(Regime::SaturatingBurst, 1, 1);
         let second = corpus.select(Regime::SaturatingBurst, 2, 1);
-        assert!(!zero.malicious);
+        assert!(!zero.malicious && !ten.malicious && !twenty.malicious);
+        assert_eq!(zero.name, "benign_b1");
+        assert_eq!(ten.name, "benign_bytes_tensor");
+        assert_eq!(twenty.name, "nesting_depth_16");
         assert!(first.malicious && second.malicious);
         assert_ne!(first.name, second.name);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn permission_denied_label_checks_the_message_before_http_400() {
+        let denied = tonic::Status::new(tonic::Code::PermissionDenied, "unauthorized_rpc");
+        assert_eq!(status_label(&denied), "PERMISSION_DENIED");
+        let http = tonic::Status::new(tonic::Code::Unknown, "upstream returned 403");
+        assert_eq!(status_label(&http), "PERMISSION_DENIED");
+        let invalid = tonic::Status::new(tonic::Code::InvalidArgument, "shape");
+        assert_eq!(status_label(&invalid), "INVALID_ARGUMENT");
     }
 }

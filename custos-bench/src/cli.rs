@@ -1,4 +1,4 @@
-//! Command-line surface for the three benchmark regimes.
+//! Command-line surface for the benchmark regimes.
 
 use std::path::PathBuf;
 
@@ -16,6 +16,9 @@ pub enum Regime {
     /// Closed fan-out of simultaneous attack requests.
     #[value(name = "saturating-burst")]
     SaturatingBurst,
+    /// Send each manifest entry once and score it against its expected decision.
+    #[value(name = "oracle-sweep")]
+    OracleSweep,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -138,5 +141,11 @@ mod tests {
         assert_eq!(cli.regime, Regime::Interleaved);
         assert_eq!(cli.rps, 1000);
         assert_eq!(cli.watch_pids, ["11", "22", "33"]);
+    }
+
+    #[test]
+    fn parses_oracle_sweep() {
+        let cli = Cli::parse_from(["custos-bench", "--regime", "oracle-sweep"]);
+        assert_eq!(cli.regime, Regime::OracleSweep);
     }
 }

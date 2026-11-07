@@ -16,14 +16,16 @@ bytes = "1"
 clap = { version = "4", features = ["derive"] }
 hdrhistogram = "7"
 http = "1"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["client", "http2"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
 quanta = "0.12"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "fs", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "fs", "io-util", "net"] }
 tonic = { version = "0.14", features = ["transport"] }
 tower = "0.5"
 
 [dev-dependencies]
-http-body-util = "0.1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 tokio-stream = "0.1"
