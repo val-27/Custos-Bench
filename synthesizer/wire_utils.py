@@ -37,11 +37,11 @@ class Artifact:
         return asdict(self)
 
 
-def grpc_frame(pb_bytes: bytes) -> bytes:
-    """Prepend the uncompressed gRPC length-prefixed frame header."""
+def grpc_frame(pb_bytes: bytes, *, compression_flag: int = GRPC_COMPRESSION_NONE) -> bytes:
+    """Prepend the 5-byte gRPC length-prefixed frame header."""
     if len(pb_bytes) > 0xFFFFFFFF:
         raise ValueError(f"payload {len(pb_bytes)} exceeds u32 gRPC length")
-    return GRPC_HEADER_STRUCT.pack(GRPC_COMPRESSION_NONE, len(pb_bytes)) + pb_bytes
+    return GRPC_HEADER_STRUCT.pack(compression_flag & 0xFF, len(pb_bytes)) + pb_bytes
 
 
 def write_dual(
@@ -52,12 +52,13 @@ def write_dual(
     category: str,
     expected: str,
     notes: str = "",
+    compression_flag: int = GRPC_COMPRESSION_NONE,
 ) -> Artifact:
     """Write ``<name>.pb`` and ``<name>.grpc`` and return the manifest entry."""
     directory.mkdir(parents=True, exist_ok=True)
     pb_path = directory / f"{name}.pb"
     grpc_path = directory / f"{name}.grpc"
-    framed = grpc_frame(pb_bytes)
+    framed = grpc_frame(pb_bytes, compression_flag=compression_flag)
     pb_path.write_bytes(pb_bytes)
     grpc_path.write_bytes(framed)
     repo_root = directory.parent.parent

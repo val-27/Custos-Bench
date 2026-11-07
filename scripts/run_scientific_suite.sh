@@ -27,6 +27,7 @@ MODE="loopback"
 TARGET_HOST="127.0.0.1"
 TRIALS=5
 RPS_LIST="200 500 1000 2000"
+INTERLEAVED_RPS=1000
 DURATION=30
 REQUESTS=100000
 CONCURRENCY=2000
@@ -74,6 +75,7 @@ while [[ $# -gt 0 ]]; do
     --target-host) TARGET_HOST="$2"; shift 2 ;;
     --trials) TRIALS="$2"; shift 2 ;;
     --rps) RPS_LIST="$2"; shift 2 ;;
+    --interleaved-rps) INTERLEAVED_RPS="$2"; shift 2 ;;
     --duration) DURATION="$2"; shift 2 ;;
     --requests) REQUESTS="$2"; shift 2 ;;
     --concurrency) CONCURRENCY="$2"; shift 2 ;;
@@ -186,9 +188,9 @@ for spec in "${topologies[@]}"; do
     for rps in ${RPS_LIST}; do
       run_bench "${topology}" "steady-benign" "${rps}" "${trial}" "${port}"
     done
-    run_bench "${topology}" "interleaved" 1000 "${trial}" "${port}"
+    run_bench "${topology}" "interleaved" "${INTERLEAVED_RPS}" "${trial}" "${port}"
     if [[ "${SKIP_BURST}" -eq 0 ]]; then
-      run_bench "${topology}" "saturating-burst" 0 "${trial}" "${port}"
+      run_bench "${topology}" "saturating-burst" "${CONCURRENCY}" "${trial}" "${port}"
     fi
   done
 done

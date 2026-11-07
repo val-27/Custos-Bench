@@ -82,7 +82,9 @@ impl Corpus {
                 }
             }
             Regime::SaturatingBurst => {
-                if self.malicious.is_empty() {
+                // Mix 10% benign requests (every 10th request) into the 2,000-concurrency burst
+                // so operators can measure legitimate user P99 latency and survival under fire.
+                if self.malicious.is_empty() || index.is_multiple_of(10) {
                     &self.benign[0]
                 } else {
                     &self.malicious[index as usize % self.malicious.len()]
@@ -298,7 +300,8 @@ async fn run_open_loop(
         tasks.push(tokio::spawn(async move {
             let _permit = permit;
             let actual_send = clock.raw();
-            let status = unary(&mut grpc, path, payload.bytes.clone(), timeout).await;
+            let compressed = payload.name == "grpc_compressed_flag_01";
+            let status = unary(&mut grpc, path, payload.bytes.clone(), compressed, timeout).await;
             let completed_at = clock.raw();
             let latency_ns = clock
                 .delta(t0, completed_at)
@@ -350,7 +353,8 @@ async fn run_burst(
         let timeout = Duration::from_millis(cli.timeout_ms);
         tasks.push(tokio::spawn(async move {
             let actual_send = clock.raw();
-            let status = unary(&mut grpc, path, payload.bytes.clone(), timeout).await;
+            let compressed = payload.name == "grpc_compressed_flag_01";
+            let status = unary(&mut grpc, path, payload.bytes.clone(), compressed, timeout).await;
             let completed_at = clock.raw();
             Observation {
                 latency_ns: clock.delta(t0, completed_at).as_nanos() as u64,
@@ -377,6 +381,7 @@ async fn unary(
     grpc: &mut tonic::client::Grpc<Channel>,
     path: PathAndQuery,
     payload: Bytes,
+    compressed: bool,
     timeout: Duration,
 ) -> (&'static str, u64) {
     let ready = tokio::time::timeout(timeout, grpc.ready()).await;
@@ -386,7 +391,12 @@ async fn unary(
     if let Err(_err) = ready.unwrap() {
         return ("TRANSPORT", 0);
     }
-    let request = Request::new(payload);
+    let mut request = Request::new(payload);
+    if compressed {
+        if let Ok(val) = tonic::metadata::MetadataValue::try_from("gzip") {
+            request.metadata_mut().insert("grpc-encoding", val);
+        }
+    }
     match tokio::time::timeout(timeout, grpc.unary(request, path, RawCodec)).await {
         Ok(Ok(response)) => ("OK", response.into_inner().len() as u64),
         Ok(Err(status)) => (status_label(&status), 0),
@@ -453,7 +463,7 @@ fn assemble(
     }
     let secs = elapsed.as_secs_f64().max(1e-9);
     let goodput: Goodput = telemetry::goodput(histograms.tx_bytes, histograms.rx_bytes, elapsed);
-    let separate = cli.regime == Regime::Interleaved;
+    let separate = matches!(cli.regime, Regime::Interleaved | Regime::SaturatingBurst);
     TrialReport {
         label: cli.label.clone(),
         regime: regime_name(cli.regime).to_string(),
@@ -590,11 +600,13 @@ mod tests {
     }
 
     #[test]
-    fn burst_selects_only_malicious_payloads() {
+    fn burst_mixes_ten_percent_benign_with_ninety_percent_malicious() {
         let dir = temp_corpus();
         let corpus = Corpus::load(&dir, "benign_b1").unwrap();
-        let first = corpus.select(Regime::SaturatingBurst, 0, 1);
-        let second = corpus.select(Regime::SaturatingBurst, 1, 1);
+        let zero = corpus.select(Regime::SaturatingBurst, 0, 1);
+        let first = corpus.select(Regime::SaturatingBurst, 1, 1);
+        let second = corpus.select(Regime::SaturatingBurst, 2, 1);
+        assert!(!zero.malicious);
         assert!(first.malicious && second.malicious);
         assert_ne!(first.name, second.name);
         let _ = std::fs::remove_dir_all(&dir);

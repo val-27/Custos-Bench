@@ -258,4 +258,30 @@ def generate_benign(
                 ),
             )
         )
+
+    # Benign variable-length BYTES tensor test case (ensures parity checker does not
+    # falsely reject variable-width string/bytes tensors whose size != shape * elem_width).
+    import struct
+    strings = [b"classify: benign image caption prompt", b"model: resnet50_tokenizer_v2"]
+    bytes_raw = b"".join(struct.pack("<I", len(s)) + s for s in strings)
+    bytes_input = encode_infer_input_tensor("text_input", "BYTES", [1, len(strings)])
+    bytes_payload = b"".join(
+        (
+            _encode_string_field(1, MODEL_NAME),
+            _encode_string_field(2, MODEL_VERSION),
+            _encode_string_field(3, "benign_bytes_tensor"),
+            _encode_bytes_field(5, bytes_input),
+            _encode_bytes_field(7, bytes_raw),
+        )
+    )
+    artifacts.append(
+        write_dual(
+            out_dir,
+            "benign_bytes_tensor",
+            bytes_payload,
+            category="benign",
+            expected="allow",
+            notes=f"KServe v2 BYTES tensor [1,2] with length-prefixed strings ({len(bytes_raw)} B raw_input_contents)",
+        )
+    )
     return artifacts

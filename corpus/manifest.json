@@ -1,6 +1,6 @@
 {
   "schema": "custos-benchmarks.corpus.v1",
-  "count": 27,
+  "count": 30,
   "artifacts": [
     {
       "name": "benign_b1",
@@ -51,6 +51,16 @@
       "pb_bytes": 9633852,
       "grpc_bytes": 9633857,
       "notes": "resnet50 FP32 NCHW [16,3,224,224] source=synthetic tensor_bytes=9633792"
+    },
+    {
+      "name": "benign_bytes_tensor",
+      "category": "benign",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_bytes_tensor.pb",
+      "grpc_path": "corpus/benign/benign_bytes_tensor.grpc",
+      "pb_bytes": 134,
+      "grpc_bytes": 139,
+      "notes": "KServe v2 BYTES tensor [1,2] with length-prefixed strings (73 B raw_input_contents)"
     },
     {
       "name": "nesting_depth_15",
@@ -260,7 +270,7 @@
       "grpc_path": "corpus/malicious/sgroup_wire_type_3_bomb.grpc",
       "pb_bytes": 268,
       "grpc_bytes": 273,
-      "notes": "CVE-2024-7254: 64 nested Wire Type 3 (SGROUP) tags bypassing recursion counters"
+      "notes": "CVE-2024-7254-class: 64 nested Wire Type 3 (SGROUP) tags bypassing recursion counters"
     },
     {
       "name": "unknown_field_ast_flood",
@@ -270,7 +280,27 @@
       "grpc_path": "corpus/malicious/unknown_field_ast_flood.grpc",
       "pb_bytes": 4510,
       "grpc_bytes": 4515,
-      "notes": "CVE-2021-22569 / CVE-2022-1941: 1,500 shallow unknown tags at D=0 (> 1,024 tag limit)"
+      "notes": "CVE-2022-1941 / CVE-2021-22569-class: 1,500 shallow unknown tags at D=0 (> 1,024 tag limit)"
+    },
+    {
+      "name": "cve_2024_0088_shm_params_infer",
+      "category": "shm_param_injection",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/cve_2024_0088_shm_params_infer.pb",
+      "grpc_path": "corpus/malicious/cve_2024_0088_shm_params_infer.grpc",
+      "pb_bytes": 177,
+      "grpc_bytes": 182,
+      "notes": "CVE-2024-0088: shared_memory_region/offset/byte_size injected inside ModelInfer parameters map"
+    },
+    {
+      "name": "grpc_compressed_flag_01",
+      "category": "compressed_frame",
+      "expected": "reject",
+      "pb_path": "corpus/malicious/grpc_compressed_flag_01.pb",
+      "grpc_path": "corpus/malicious/grpc_compressed_flag_01.grpc",
+      "pb_bytes": 57,
+      "grpc_bytes": 62,
+      "notes": "Compressed gRPC frame (flag=0x01 / gzip) concealing an OOM tensor payload from uncompressed wire inspection"
     }
   ]
 }

@@ -31,12 +31,12 @@ To isolate the latency, throughput, CPU/RSS cost, and survivability impact of [`
 ## 3. Target Metrics & Benchmark Regimes
 
 ### Three Workload Regimes
-* **`steady-benign`:** Open-loop `100%` benign KServe v2 inference load (`200`, `500`, `1,000`, `2,000` RPS) across batch sizes `1..16` to quantify steady-state latency overhead.
+* **`steady-benign`:** Open-loop `100%` benign KServe v2 inference load (`100`, `150`, `200`, `500` RPS) across batch sizes `1..16` to quantify steady-state latency overhead.
 * **`interleaved`:** Open-loop `99%` benign / `1%` malicious deterministic traffic mix to measure tail-latency degradation (`P99`, `P99.9`, `P99.99`), head-of-line blocking, False Positive Rate (`FPR`), and True Positive Drop Rate (`TP-drop`).
-* **`saturating-burst`:** Simultaneous fan-out of `2,000` concurrent attack RPCs (`--concurrency 2000`) to evaluate Triton server survival, process RSS stability, and early rejection under adversarial floods.
+* **`saturating-burst`:** Simultaneous fan-out of concurrent RPCs (`90%` adversarial exploits + `10%` legitimate `benign_b1` inference requests) to evaluate legitimate user `P99` tail latency and survival under an active flood alongside total data-path Peak RSS (`Triton + Envoy + Sidecar`).
 
 ### Four Evaluation Pillars Exported per Trial (JSON & CSV)
-1. **Filtering Accuracy (`accuracy`):** `true_positive_drop_rate` (`malicious_rejected / malicious_sent`) and `false_positive_rate` (`benign_rejected / benign_sent`).
+1. **Filtering Accuracy (`accuracy`):** `true_positive_drop_rate` (`malicious_rejected / malicious_sent`, `N/A` on `steady-benign`) and `false_positive_rate` (`benign_rejected / benign_sent`).
 2. **Latency Overhead (`latency` & `service_time`):** `P0, P50, P90, P95, P99, P99.9, P99.99, Max` in nanoseconds for overall, benign-only, and malicious-only traffic.
 3. **Resource Efficiency (`processes` & `wire`):** `/proc/<pid>/stat` and `/proc/<pid>/status` sampling (`avg_cpu_percent`, `peak_cpu_percent`, `avg_rss_kb`, `peak_rss_kb`, plus normalized `cpu_per_1000_requests_percent` and `rss_per_1000_requests_kb`) alongside `/sys/class/net/<iface>/statistics` wire throughput.
 4. **Server Survival (`status`):** Breakdown of `OK`, `INVALID_ARGUMENT`, `HTTP_400`, `UNAVAILABLE`, `INTERNAL`, `DEADLINE_EXCEEDED`, and `TRANSPORT` connection resets.
@@ -58,16 +58,16 @@ Each payload is emitted in two formats under `corpus/{benign,malicious}/`:
 | Extension | Wire Format | Consumer |
 | :--- | :--- | :--- |
 | `*.pb` | Raw Protobuf message bytes (no 5-byte gRPC frame header) | `custos-bench` (`RawCodec` lets Tonic prepend the 5-byte gRPC header on the wire) |
-| `*.grpc` | Pre-framed `struct.pack(">BI", 0x00, len) + pb_bytes` | Offline unit tests (`custos_core::inspect_payload`) |
+| `*.grpc` | Pre-framed `struct.pack(">BI", flag, len) + pb_bytes` | Offline unit tests (`custos_core::inspect_payload`) |
 
-`corpus/manifest.json` indexes all 27 generated payloads:
-* **5 Benign Payloads (`corpus/benign/`):** `benign_b1` (`602 KB`), `benign_b2` (`1.20 MB`), `benign_b4` (`2.41 MB`), `benign_b8` (`4.82 MB`), `benign_b16` (`9.63 MB`).
+`corpus/manifest.json` indexes all 30 generated payloads:
+* **6 Benign Payloads (`corpus/benign/`):** `benign_b1` (`602 KB`), `benign_b2` (`1.20 MB`), `benign_b4` (`2.41 MB`), `benign_b8` (`4.82 MB`), `benign_b16` (`9.63 MB`), and `benign_bytes_tensor` (`134 B` variable-length `BYTES` string tensor `[1, 2]`).
 * **2 Boundary-Acceptance Payloads (`corpus/malicious/nesting_depth_{15,16}`):** Verify `MAX_DEPTH = 16` boundary admission (`expected: "allow"`). Automatically excluded from active attack bursts by `Corpus::load` so `interleaved` and `saturating-burst` only fire true exploits.
-* **20 Adversarial Exploit Payloads (`corpus/malicious/`):**
+* **22 Adversarial Exploit Payloads (`corpus/malicious/`):**
   * **Nesting Bombs (`6`):** `nesting_depth_{17,20,50,100,250,500}`
-  * **Tensor Shape Overflows & Buffer Parity Mismatch (`8`):** `shape_neg_{packed,unpacked}`, `shape_wrap_64bit_{packed,unpacked}`, `shape_oom_massive_{packed,unpacked}`, `shape_reordered_tail` (`16 KiB` Field 7 preceding malicious Field 5), `shape_buffer_mismatch_underread` (`CVE-2025-23320` — `[4,3,224,224]` `FP32` declaring `2.41 MB` with `64 B` `raw_input_contents`)
+  * **Tensor Shape Overflows & Buffer Parity Mismatch (`8`):** `shape_neg_{packed,unpacked}`, `shape_wrap_64bit_{packed,unpacked}`, `shape_oom_massive_{packed,unpacked}`, `shape_reordered_tail` (`16 KiB` Field 7 preceding malicious Field 5), `shape_buffer_mismatch_underread` (`CVE-2025-23334`-class OOB read — `[4,3,224,224]` `FP32` declaring `2.41 MB` with `64 B` `raw_input_contents`)
   * **Malformed Varints (`4`):** `varint_unterminated_11`, `varint_unterminated_64`, `varint_10th_byte_overflow`, `varint_truncated_eof`
-  * **CVE Wire & AST Exploits (`2`):** `sgroup_wire_type_3_bomb` (`CVE-2024-7254` — 64 nested Wire Type 3 `SGROUP` tags), `unknown_field_ast_flood` (`CVE-2021-22569` / `CVE-2022-1941` — 1,500 shallow unknown tags at `D=0`)
+  * **CVE Wire, Parameter & Compression Exploits (`4`):** `sgroup_wire_type_3_bomb` (`CVE-2024-7254`-class — 64 nested Wire Type 3 `SGROUP` tags), `unknown_field_ast_flood` (`CVE-2022-1941` / `CVE-2021-22569`-class — 1,500 shallow unknown tags at `D=0`), `cve_2024_0088_shm_params_infer` (`CVE-2024-0088` — `shared_memory_region`/`offset`/`byte_size` injected inside `ModelInfer` `InferInputTensor.parameters`), and `grpc_compressed_flag_01` (`flag = 0x01` `gzip`-compressed gRPC frame concealing an OOM tensor payload)
 
 ---
 
