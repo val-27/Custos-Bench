@@ -280,16 +280,77 @@ def aggregate_trials(raw_trials: list[dict]) -> list[dict]:
     return aggregated
 
 
+def build_oracle_sweep_rows(oracle_trials: list[dict], manifest_path: Path) -> list[dict]:
+    if not oracle_trials:
+        return []
+    manifest_meta: dict[str, dict] = {}
+    if manifest_path.is_file():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            for item in manifest.get("artifacts", []):
+                manifest_meta[item["name"]] = item
+        except Exception:
+            pass
+
+    by_topo: dict[str, dict[str, dict]] = {}
+    ordered_names: list[str] = []
+    for raw in oracle_trials:
+        topo = infer_topology(str(raw.get("label", "")))
+        rows_map = {}
+        for row in raw.get("oracle", []):
+            name = row["name"]
+            rows_map[name] = row
+            if name not in ordered_names:
+                ordered_names.append(name)
+        by_topo[topo] = rows_map
+
+    prod_map = by_topo.get("Custos Production", {})
+    base_map = by_topo.get("Proxy Baseline", {})
+    ctrl_map = by_topo.get("Unprotected Control", {})
+
+    merged: list[dict] = []
+    for name in ordered_names:
+        prod_row = prod_map.get(name) or base_map.get(name) or ctrl_map.get(name) or {}
+        base_row = base_map.get(name) or {}
+        ctrl_row = ctrl_map.get(name) or {}
+        meta = manifest_meta.get(name, {})
+        method = str(prod_row.get("method", meta.get("method", "/inference.GRPCInferenceService/ModelInfer")))
+        short_method = method.rsplit("/", 1)[-1] if "/" in method else method
+        merged.append(
+            {
+                "name": name,
+                "category": str(meta.get("category", "oracle")),
+                "expected": str(prod_row.get("expected", meta.get("expected", "reject"))),
+                "framing": str(prod_row.get("framing", meta.get("framing", "protobuf"))),
+                "method": short_method,
+                "tx_bytes": int(prod_row.get("tx_bytes", meta.get("pb_bytes", 0))),
+                "prod_status": str(prod_row.get("status", "N/A")),
+                "prod_match": bool(prod_row.get("match", False)),
+                "prod_latency_ms": round(float(prod_row.get("latency_ns", 0)) / 1_000_000.0, 2),
+                "baseline_status": str(base_row.get("status", "N/A")),
+                "baseline_match": bool(base_row.get("match", False)),
+                "baseline_latency_ms": round(float(base_row.get("latency_ns", 0)) / 1_000_000.0, 2),
+                "control_status": str(ctrl_row.get("status", "N/A")),
+                "control_match": bool(ctrl_row.get("match", False)),
+                "control_latency_ms": round(float(ctrl_row.get("latency_ns", 0)) / 1_000_000.0, 2),
+                "notes": str(meta.get("notes", "")),
+            }
+        )
+    return merged
+
+
 def main() -> int:
     args = parse_args()
 
     raw_trials = []
+    oracle_trials = []
     for path in sorted(args.results.rglob("*.json")):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             continue
         if str(payload.get("regime", "")) == "oracle-sweep":
+            oracle_trials.append(payload)
             continue
         if "latency" in payload:
             raw_trials.append(payload)
@@ -300,6 +361,11 @@ def main() -> int:
 
     aggregated = aggregate_trials(raw_trials)
     print(f"Aggregated {len(aggregated)} trial series (from {len(raw_trials)} raw trials)")
+
+    manifest_path = Path(__file__).resolve().parent.parent / "corpus" / "manifest.json"
+    oracle_rows = build_oracle_sweep_rows(oracle_trials, manifest_path)
+    if oracle_rows:
+        print(f"Merged {len(oracle_rows)} oracle-sweep payload rows across {len(oracle_trials)} topologies")
 
     if args.update_app_js:
         app_js = args.web_dir / "app.js"
@@ -312,9 +378,25 @@ def main() -> int:
             count=1,
             flags=re.DOTALL,
         )
+        if oracle_rows:
+            oracle_replacement = "const ORACLE_SWEEP_ROWS = " + json.dumps(oracle_rows, indent=2, ensure_ascii=False) + ";"
+            if "const ORACLE_SWEEP_ROWS =" in new_content:
+                new_content, _ = re.subn(
+                    r"const ORACLE_SWEEP_ROWS = \[.*?\];",
+                    lambda _: oracle_replacement,
+                    new_content,
+                    count=1,
+                    flags=re.DOTALL,
+                )
+            else:
+                new_content = new_content.replace(
+                    replacement,
+                    replacement + "\n\n" + oracle_replacement,
+                    1,
+                )
         if count == 1:
             app_js.write_text(new_content, encoding="utf-8")
-            print(f"Updated REFERENCE_TRIALS in {app_js}")
+            print(f"Updated REFERENCE_TRIALS (and ORACLE_SWEEP_ROWS) in {app_js}")
         else:
             print(f"Warning: could not locate REFERENCE_TRIALS block in {app_js}")
 
