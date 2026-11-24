@@ -164,6 +164,15 @@ def benign_shape_zero_axis() -> bytes:
     )
 
 
+def benign_shape_pos_packed() -> bytes:
+    """One-mutation positive-dimension twin for ``shape_neg_packed`` ([1, 3, +1, 224] FP32)."""
+    return _request(
+        [_input("input_tensor", "FP32", [1, 3, 1, 224])],
+        [b"\x00" * (1 * 3 * 1 * 224 * 4)],
+        "exploit",
+    )
+
+
 def _dtype_request(name: str, datatype: str, raw_len: int) -> bytes:
     return _request(
         [_input("input0", datatype, [1, 4])],
@@ -282,6 +291,13 @@ def _write_http_body(
     expected: str,
     method: str,
     notes: str,
+    role: str = "background",
+    pair_id: str | None = None,
+    family: str | None = None,
+    twin: str | None = None,
+    mutation: str | None = None,
+    eligible: bool = False,
+    ineligible_reason: str | None = None,
 ) -> Artifact:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{name}.body"
@@ -302,10 +318,26 @@ def _write_http_body(
         notes=notes,
         method=method,
         framing="http-body",
+        role=role,
+        pair_id=pair_id,
+        family=family,
+        twin=twin,
+        mutation=mutation,
+        eligible=eligible,
+        ineligible_reason=ineligible_reason,
     )
 
 
-def _rpc_row(base: Artifact, name: str, method: str, expected: str, notes: str) -> Artifact:
+def _rpc_row(
+    base: Artifact,
+    name: str,
+    method: str,
+    expected: str,
+    notes: str,
+    *,
+    role: str = "header_probe",
+    ineligible_reason: str | None = "header_only_rpc_probe_scored_in_allowlist_table",
+) -> Artifact:
     return Artifact(
         name=name,
         category="rpc",
@@ -317,6 +349,9 @@ def _rpc_row(base: Artifact, name: str, method: str, expected: str, notes: str) 
         notes=notes,
         method=method,
         framing="protobuf",
+        role=role,
+        eligible=False,
+        ineligible_reason=ineligible_reason if expected == "reject" else None,
     )
 
 
@@ -326,69 +361,119 @@ def generate_oracle(corpus_root: Path, *, include_ceiling_blob: bool = False) ->
     malicious = corpus_root / "malicious"
     artifacts: list[Artifact] = []
 
-    allow_rows: list[tuple[str, bytes, str, str]] = [
+    allow_rows: list[tuple[str, bytes, str, str, str, str | None, str | None, str | None]] = [
         (
             "benign_multichunk_aligned",
             benign_multichunk_aligned(),
             "chunk_parity",
             "FP32 [4] then FP32 [1] with raw chunks of 16 then 4 bytes",
+            "twin",
+            "multichunk_swap",
+            "multichunk_fp32",
+            "per_chunk_binding",
         ),
         (
             "benign_contents_fp32_unpacked",
             benign_contents_fp32_unpacked(),
             "tensor_contents",
             "FP32 [1,4] as four unpacked fp32_contents (field 6, wire type 5), no raw_input_contents",
+            "twin",
+            "contents_short",
+            "contents_fp32",
+            "contents_cardinality",
         ),
         (
             "benign_contents_fp32_packed",
             benign_contents_fp32_packed(),
             "tensor_contents",
             "FP32 [1,4] as packed fp32_contents (field 6, wire type 2) holding float32 1,2,3,4, no raw_input_contents",
+            "twin",
+            None,
+            "contents_fp32",
+            "contents_packed_layout",
         ),
         (
             "benign_mixed_fp32_bytes",
             benign_mixed_fp32_bytes(),
             "bytes_prefix",
             "FP32 [1,4] raw of 16 bytes plus BYTES [1,2] with little-endian u32 prefixes",
+            "twin",
+            "bytes_masks_short",
+            "bytes_tensor",
+            "bytes_chunk_compensates_short_fp32",
         ),
         (
             "benign_param_binary_data_size",
             benign_param_binary_data_size(),
             "parameters",
             "FP32 [1,4] with InferParameter key binary_data_size on int64_param field 2",
+            "twin",
+            "shm_params_infer",
+            "parameters",
+            "shared_memory_param_key",
         ),
         (
             "benign_shape_zero_axis",
             benign_shape_zero_axis(),
             "shape_axis",
             "FP32 [1,0,224,224] with an empty raw_input_contents. KServe allows a zero axis",
+            "twin",
+            None,
+            "shape_axis",
+            "zero_length_axis",
+        ),
+        (
+            "benign_shape_pos_packed",
+            benign_shape_pos_packed(),
+            "shape_axis",
+            "FP32 [1,3,1,224] with a 2,688-byte raw chunk; positive-dimension twin for shape_neg_packed",
+            "twin",
+            "shape_sign_neg",
+            "shape_sign",
+            "sign_bit",
         ),
         (
             "benign_dtype_bool",
             _dtype_request("benign_dtype_bool", "BOOL", 4),
             "datatype",
             "BOOL [1,4] with a 4-byte raw chunk",
+            "twin",
+            None,
+            "datatype",
+            "dtype_width",
         ),
         (
             "benign_dtype_fp16",
             _dtype_request("benign_dtype_fp16", "FP16", 8),
             "datatype",
             "FP16 [1,4] with an 8-byte raw chunk",
+            "twin",
+            "dtype_unknown_space",
+            " dtype_unknown",
+            "datatype_token",
         ),
         (
             "benign_dtype_bf16",
             _dtype_request("benign_dtype_bf16", "BF16", 8),
             "datatype",
             "BF16 [1,4] with an 8-byte raw chunk",
+            "twin",
+            None,
+            "datatype",
+            "dtype_width",
         ),
         (
             "benign_dtype_fp64",
             _dtype_request("benign_dtype_fp64", "FP64", 32),
             "datatype",
             "FP64 [1,4] with a 32-byte raw chunk",
+            "twin",
+            "dtype_fp64_short",
+            "dtype_fp64",
+            "raw_width",
         ),
     ]
-    for name, payload, category, notes in allow_rows:
+    for name, payload, category, notes, role, pair_id, family, mutation in allow_rows:
         artifacts.append(
             write_dual(
                 benign,
@@ -397,6 +482,10 @@ def generate_oracle(corpus_root: Path, *, include_ceiling_blob: bool = False) ->
                 category=category,
                 expected="allow",
                 notes=notes,
+                role=role,
+                pair_id=pair_id,
+                family=family.strip() if family else None,
+                mutation=mutation,
             )
         )
 
@@ -412,78 +501,156 @@ def generate_oracle(corpus_root: Path, *, include_ceiling_blob: bool = False) ->
                     f"FP32 [{CEILING_ELEMENTS}] with a {CEILING_RAW_BYTES}-byte raw chunk. "
                     "Opt-in only; the Envoy listener cap is 16 MiB"
                 ),
+                role="background",
             )
         )
 
-    reject_rows: list[tuple[str, bytes, str, str]] = [
+    reject_rows: list[tuple[str, bytes, str, str, str, str | None, str | None, str | None, str | None, bool, str | None]] = [
         (
             "chunk_swap_fp32",
             chunk_swap_fp32(),
             "chunk_parity",
             "FP32 [4] bound to a 4-byte chunk and FP32 [1] bound to a 16-byte chunk",
+            "attack",
+            "multichunk_swap",
+            "multichunk_fp32",
+            "benign_multichunk_aligned",
+            "raw_chunk_order",
+            True,
+            None,
         ),
         (
             "chunk_omitted_fp32",
             chunk_omitted_fp32(),
             "chunk_parity",
             "Two tensors expecting 16 and 4 bytes, with a single 20-byte raw chunk",
+            "attack",
+            "multichunk_omitted",
+            "multichunk_fp32",
+            "benign_multichunk_aligned",
+            "raw_chunk_cardinality",
+            True,
+            None,
         ),
         (
             "chunk_swap_reordered",
             chunk_swap_reordered(),
             "chunk_parity",
             "Swapped raw chunks written before the inputs. Binding is by index, not wire order",
+            "attack",
+            "multichunk_reordered",
+            "multichunk_fp32",
+            "benign_multichunk_aligned",
+            "raw_chunk_wire_order_and_swap",
+            True,
+            None,
         ),
         (
             "contents_fp32_unpacked_short",
             contents_fp32_unpacked_short(),
             "tensor_contents",
             "FP32 [4,3,224,224] with four unpacked fp32 values and no raw_input_contents",
+            "attack",
+            "contents_short",
+            "contents_fp32",
+            "benign_contents_fp32_unpacked",
+            "contents_cardinality_short",
+            True,
+            None,
         ),
         (
             "contents_fp32_unpacked_ceiling",
             contents_fp32_unpacked_ceiling(),
             "tensor_contents",
             "FP32 [16777216] with one unpacked fp32 value and no raw_input_contents",
+            "attack",
+            "contents_ceiling",
+            "contents_fp32",
+            "benign_contents_fp32_unpacked",
+            "contents_cardinality_ceiling",
+            True,
+            None,
         ),
         (
             "bytes_length_prefix_oversize",
             bytes_length_prefix_oversize(),
             "bytes_prefix",
             "BYTES [1] whose little-endian u32 length is 0xFFFFFFFF inside an 8-byte chunk",
+            "attack",
+            "bytes_oversize_prefix",
+            "bytes_tensor",
+            "benign_bytes_tensor",
+            "bytes_u32_length_prefix",
+            True,
+            None,
         ),
         (
             "bytes_masks_short_fp32",
             bytes_masks_short_fp32(),
             "bytes_prefix",
             "FP32 [4] chunk of 4 bytes compensated by a 16-byte BYTES chunk",
+            "attack",
+            "bytes_masks_short",
+            "bytes_tensor",
+            "benign_mixed_fp32_bytes",
+            "bytes_chunk_compensates_short_fp32",
+            True,
+            None,
         ),
         (
             "shape_sum_four_ceilings",
             shape_sum_four_ceilings(),
             "shape_budget",
             "Four FP32 [16777216] tensors and no raw chunks. Declared elements are 4 times the per-tensor ceiling",
+            "unpaired_attack",
+            None,
+            "shape_budget",
+            None,
+            None,
+            False,
+            "cumulative_ceiling_exceeds_envoy_16mib_buffer_for_twin",
         ),
         (
             "shape_packed_ones",
             shape_packed_ones(),
             "shape_budget",
             "One packed shape of 100000 dimensions of 1 (product stays 1). latency_ns is the measurement against the 250 ms ext_proc deadline",
+            "unpaired_attack",
+            None,
+            "shape_budget",
+            None,
+            None,
+            False,
+            "packed_dimension_flood_without_single_mutation_twin",
         ),
         (
             "datatype_fp64_short_raw",
             datatype_fp64_short_raw(),
             "datatype",
             "FP64 [1,4] with a 16-byte raw chunk (the FP32 length)",
+            "attack",
+            "dtype_fp64_short",
+            "dtype_fp64",
+            "benign_dtype_fp64",
+            "raw_width",
+            True,
+            None,
         ),
         (
             "datatype_unknown_width",
             datatype_unknown_width(),
             "datatype",
             "Datatype 'FP32 ' (trailing space) on shape [1,4] with a 16-byte raw chunk. Unknown width fails closed",
+            "attack",
+            "dtype_unknown_space",
+            "dtype_unknown",
+            "benign_dtype_fp16",
+            "datatype_token",
+            True,
+            None,
         ),
     ]
-    for name, payload, category, notes in reject_rows:
+    for name, payload, category, notes, role, pair_id, family, twin, mutation, eligible, reason in reject_rows:
         artifacts.append(
             write_dual(
                 malicious,
@@ -492,6 +659,13 @@ def generate_oracle(corpus_root: Path, *, include_ceiling_blob: bool = False) ->
                 category=category,
                 expected="reject",
                 notes=notes,
+                role=role,
+                pair_id=pair_id,
+                family=family,
+                twin=twin,
+                mutation=mutation,
+                eligible=eligible,
+                ineligible_reason=reason,
             )
         )
 
@@ -507,6 +681,10 @@ def generate_oracle(corpus_root: Path, *, include_ceiling_blob: bool = False) ->
             expected="allow",
             method=MODEL_INFER_METHOD,
             notes="One uncompressed gRPC frame whose declared length equals the body. Sent as the HTTP body, not via tonic",
+            role="twin",
+            pair_id="framing_two_concat",
+            family="framing",
+            mutation="concatenated_second_grpc_frame",
         )
     )
     artifacts.append(
@@ -517,6 +695,12 @@ def generate_oracle(corpus_root: Path, *, include_ceiling_blob: bool = False) ->
             expected="reject",
             method=MODEL_INFER_METHOD,
             notes="Two complete frames concatenated in one HTTP body",
+            role="attack",
+            pair_id="framing_two_concat",
+            family="framing",
+            twin="frame_single",
+            mutation="concatenated_second_grpc_frame",
+            eligible=True,
         )
     )
     artifacts.append(
@@ -527,6 +711,10 @@ def generate_oracle(corpus_root: Path, *, include_ceiling_blob: bool = False) ->
             expected="reject",
             method=f"{SERVICE}/ModelStreamInfer",
             notes="ModelStreamInfer is not on the RPC allowlist. The body is also two frames",
+            role="header_probe",
+            family="framing",
+            eligible=False,
+            ineligible_reason="two_simultaneous_mutations_method_and_second_frame",
         )
     )
 

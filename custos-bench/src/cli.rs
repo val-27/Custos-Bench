@@ -19,6 +19,29 @@ pub enum Regime {
     /// Send each manifest entry once and score it against its expected decision.
     #[value(name = "oracle-sweep")]
     OracleSweep,
+    /// Pre-registered paired-probe efficacy study (one attack + one twin per eligible pair).
+    #[value(name = "paired-probe")]
+    PairedProbe,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ProbeCell {
+    /// Idle server: probes only, no background load.
+    #[value(name = "l0")]
+    L0,
+    /// Open-loop benign background load at `--rps` during probe schedule.
+    #[value(name = "l1")]
+    L1,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum BackendKind {
+    /// Official NVIDIA C++ `tritonserver`. Required for `--regime paired-probe`.
+    #[value(name = "triton")]
+    Triton,
+    /// Deterministic simulated responder (`triton_sim`). Refused by `--regime paired-probe`.
+    #[value(name = "sim")]
+    Sim,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -111,6 +134,38 @@ pub struct Cli {
     /// Skip the RPC and only validate corpus loading plus histogram export.
     #[arg(long, default_value_t = false)]
     pub dry_run: bool,
+
+    /// Load cell for `--regime paired-probe` (`l0` probe-only or `l1` with open-loop benign background).
+    #[arg(long, value_enum, default_value = "l0")]
+    pub cell: ProbeCell,
+
+    /// Deterministic PRNG seed for Fisher-Yates pair shuffling in `--regime paired-probe`.
+    #[arg(long, default_value_t = 0xC057_05F0_2026_1117)]
+    pub trial_seed: u64,
+
+    /// 1-based trial index embedded in probe `x-request-id` values (`t{trial}-{cell}-{pair}-{role}-{topo}-{seq}`).
+    #[arg(long, default_value_t = 1)]
+    pub trial_index: u32,
+
+    /// Backend runtime under test (`triton` or `sim`). `paired-probe` refuses `sim` with exit code 2.
+    #[arg(long, value_enum, default_value = "sim")]
+    pub backend: BackendKind,
+
+    /// Study identifier for `--regime paired-probe` output grouping (`results/<study-id>/`).
+    #[arg(long, default_value = "cloud-loopback")]
+    pub study_id: String,
+
+    /// Topology tag (`A`, `B`, or `C`) embedded in probe `x-request-id` values.
+    #[arg(long, default_value = "C")]
+    pub topology_tag: String,
+
+    /// Warmup duration in seconds before starting probes in `--cell l1`.
+    #[arg(long, default_value_t = 5)]
+    pub probe_warmup_secs: u64,
+
+    /// Interval in milliseconds between consecutive probes in `--regime paired-probe`.
+    #[arg(long, default_value_t = 200)]
+    pub probe_interval_ms: u64,
 }
 
 impl Cli {
@@ -147,5 +202,33 @@ mod tests {
     fn parses_oracle_sweep() {
         let cli = Cli::parse_from(["custos-bench", "--regime", "oracle-sweep"]);
         assert_eq!(cli.regime, Regime::OracleSweep);
+    }
+
+    #[test]
+    fn parses_paired_probe_flags() {
+        let cli = Cli::parse_from([
+            "custos-bench",
+            "--regime",
+            "paired-probe",
+            "--cell",
+            "l1",
+            "--trial-seed",
+            "42",
+            "--trial-index",
+            "3",
+            "--backend",
+            "triton",
+            "--study-id",
+            "cloud-loopback-01",
+            "--topology-tag",
+            "C",
+        ]);
+        assert_eq!(cli.regime, Regime::PairedProbe);
+        assert_eq!(cli.cell, ProbeCell::L1);
+        assert_eq!(cli.trial_seed, 42);
+        assert_eq!(cli.trial_index, 3);
+        assert_eq!(cli.backend, BackendKind::Triton);
+        assert_eq!(cli.study_id, "cloud-loopback-01");
+        assert_eq!(cli.topology_tag, "C");
     }
 }

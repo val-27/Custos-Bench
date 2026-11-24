@@ -132,8 +132,23 @@ scripts/run_scientific_suite.sh --mode loopback --iface lo --trials 5
 scripts/run_scientific_suite.sh --mode lan --target-host 10.0.0.8 --iface enp3s0 --trials 5
 ```
 
-### Step 5: Generate Publication Figures
+### Step 5: Aggregate Multi-Trial Data (e.g., `N=5` to `N=1,000+` Runs) & Generate Figures
 ```bash
-python3 scripts/plot_results.py --results results/loopback --out figures/
+# Aggregate any number of trial JSONs into pooled accuracy (with 95% Clopper-Pearson CI),
+# per-percentile Mean ± 95% CI, Median/IQR, Min..Max ranges, and per-process RSS/CPU breakdown:
+python3 scripts/aggregate_runs.py \
+  --results results/lan \
+  --out-json results/lan_aggregated_summary.json \
+  --out-csv results/lan_aggregated_summary.csv \
+  --out-md results/lan_aggregated_summary.md
+
+# Export aggregated trials and 59-row oracle sweep to Custos-Web:
+python3 scripts/export_to_web.py \
+  --results results/lan \
+  --web-dir ../Custos-Web \
+  --update-app-js
+
+# Generate publication figures:
+python3 scripts/plot_results.py --results results/lan --out figures/
 ```
 Generates `latency_cdf.png/.pdf` (`P50`–`P99.99` with 95% Student-$t$ confidence intervals), `throughput.png/.pdf`, and `utilization.png/.pdf` (Peak CPU % and Peak RSS MiB).

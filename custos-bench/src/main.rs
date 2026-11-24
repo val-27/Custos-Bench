@@ -13,11 +13,17 @@ use std::process::ExitCode;
 use clap::Parser;
 use quanta::Clock;
 
-use crate::cli::Cli;
+use crate::cli::{BackendKind, Cli, Regime};
 use crate::report::{export, print_summary};
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
+    if cli.regime == Regime::PairedProbe && cli.backend == BackendKind::Sim {
+        eprintln!(
+            "refusing --regime paired-probe with --backend sim: efficacy studies require real C++ tritonserver (--backend triton)"
+        );
+        return ExitCode::from(2);
+    }
     let mut runtime = tokio::runtime::Builder::new_multi_thread();
     runtime.enable_all();
     if cli.workers > 0 {

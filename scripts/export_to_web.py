@@ -10,6 +10,7 @@ in ``Custos-Web/app.js``.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import re
 import statistics
@@ -28,6 +29,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--results", type=Path, required=True, help="Directory containing custos-bench *.json files")
     parser.add_argument("--web-dir", type=Path, required=True, help="Path to Custos-Web directory")
+    parser.add_argument(
+        "--efficacy-study",
+        type=Path,
+        default=None,
+        help="Optional paired-probe study directory (e.g. results/cloud-loopback) containing score/efficacy_pairs.csv",
+    )
     parser.add_argument("--update-app-js", action="store_true", help="Also bake aggregated trials into Custos-Web/app.js")
     return parser.parse_args()
 
@@ -255,6 +262,8 @@ def aggregate_trials(raw_trials: list[dict]) -> list[dict]:
 
         short_topo = "control" if "Control" in topo else ("baseline" if "Baseline" in topo else "prod")
         prof_slug = "bytes" if "BYTES Tensor" in profile else ("mixed" if "Mixed" in profile else "fp32")
+        p50_vals = [n["p50_ms"] for n in normed]
+        p99_vals = [n["p99_ms"] for n in normed]
         aggregated.append(
             {
                 "label": f"homelab_{short_topo}_{regime}_{prof_slug}_rps{first['rps']}_mean_n{len(members)}",
@@ -266,13 +275,19 @@ def aggregate_trials(raw_trials: list[dict]) -> list[dict]:
                 "fpr": mean_fpr,
                 "tp_drop": mean_tp_drop,
                 "p50_ms": mean_p50,
+                "p50_min_ms": round(min(p50_vals), 2),
+                "p50_max_ms": round(max(p50_vals), 2),
                 "p90_ms": mean_p90,
                 "p95_ms": mean_p95,
                 "p99_ms": mean_p99,
+                "p99_min_ms": round(min(p99_vals), 2),
+                "p99_max_ms": round(max(p99_vals), 2),
                 "p999_ms": mean_p999,
                 "p9999_ms": mean_p9999,
                 "cpu_per_1k": mean_cpu_1k,
                 "rss_mb": mean_rss_mb,
+                "benign_sent_total": total_benign_sent,
+                "benign_ok_total": total_benign_ok,
                 "survival": survival,
                 "trials_merged": len(members),
             }
@@ -339,6 +354,30 @@ def build_oracle_sweep_rows(oracle_trials: list[dict], manifest_path: Path) -> l
     return merged
 
 
+def load_efficacy_pairs(study_dir: Path | None) -> list[dict]:
+    """Pass through scored ``efficacy_pairs.csv`` only if every trial in ``study_dir`` used ``backend=triton``."""
+    if study_dir is None or not study_dir.is_dir():
+        return []
+    csv_path = study_dir / "score" / "efficacy_pairs.csv"
+    if not csv_path.is_file():
+        print(f"Skipping efficacy export: {csv_path} not found")
+        return []
+    for path in sorted(study_dir.rglob("*.json")):
+        if path.name in ("efficacy_summary.json", "latest_results.json"):
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(payload, dict) and payload.get("regime") == "paired-probe":
+            meta = payload.get("study_meta") or {}
+            if str(meta.get("backend", "")) != "triton":
+                print(f"Refusing to export efficacy table: {path.name} has backend={meta.get('backend')!r}")
+                return []
+    with csv_path.open("r", encoding="utf-8", newline="") as f:
+        return list(csv.DictReader(f))
+
+
 def main() -> int:
     args = parse_args()
 
@@ -349,8 +388,12 @@ def main() -> int:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             continue
-        if str(payload.get("regime", "")) == "oracle-sweep":
+        regime = str(payload.get("regime", ""))
+        if regime == "oracle-sweep":
             oracle_trials.append(payload)
+            continue
+        if regime == "paired-probe":
+            # Paired-probe trials are scored by score_efficacy.py and never mixed into overhead series.
             continue
         if "latency" in payload:
             raw_trials.append(payload)
@@ -367,12 +410,27 @@ def main() -> int:
     if oracle_rows:
         print(f"Merged {len(oracle_rows)} oracle-sweep payload rows across {len(oracle_trials)} topologies")
 
+    efficacy_pairs = load_efficacy_pairs(args.efficacy_study)
+    if efficacy_pairs:
+        print(f"Included {len(efficacy_pairs)} scored paired-probe efficacy rows from {args.efficacy_study}")
+
+    data_dir = args.web_dir / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    out_json = data_dir / "latest_results.json"
+    out_payload = {"trials": aggregated, "oracle_sweep": oracle_rows}
+    if efficacy_pairs:
+        out_payload["efficacy_pairs"] = efficacy_pairs
+    out_json.write_text(
+        json.dumps(out_payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
     if args.update_app_js:
         app_js = args.web_dir / "app.js"
         content = app_js.read_text(encoding="utf-8")
         replacement = "const REFERENCE_TRIALS = " + json.dumps(aggregated, indent=2, ensure_ascii=False) + ";"
         new_content, count = re.subn(
-            r"const REFERENCE_TRIALS = \[.*?\];",
+            r"const REFERENCE_TRIALS = \[.*?\n\];",
             lambda _: replacement,
             content,
             count=1,
@@ -382,7 +440,7 @@ def main() -> int:
             oracle_replacement = "const ORACLE_SWEEP_ROWS = " + json.dumps(oracle_rows, indent=2, ensure_ascii=False) + ";"
             if "const ORACLE_SWEEP_ROWS =" in new_content:
                 new_content, _ = re.subn(
-                    r"const ORACLE_SWEEP_ROWS = \[.*?\];",
+                    r"const ORACLE_SWEEP_ROWS = \[.*?\n\];",
                     lambda _: oracle_replacement,
                     new_content,
                     count=1,

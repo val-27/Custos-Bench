@@ -137,6 +137,49 @@ pub struct TrialReport {
     /// Per-payload oracle sweep rows. Empty for the open-loop regimes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub oracle: Vec<OracleRow>,
+    /// Paired-probe study metadata (`--regime paired-probe`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub study_meta: Option<StudyMeta>,
+    /// Per-probe client observations (`--regime paired-probe`), excluded from background histograms.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub probes: Vec<ProbeObservation>,
+}
+
+/// Study-level provenance recorded on every `--regime paired-probe` trial.
+#[derive(Debug, Clone, Serialize)]
+pub struct StudyMeta {
+    pub study_id: String,
+    pub backend: String,
+    pub cell: String,
+    pub topology_tag: String,
+    pub trial_index: u32,
+    pub trial_seed: u64,
+    pub probe_interval_ms: u64,
+    pub probe_warmup_secs: u64,
+    pub eligible_pairs: usize,
+}
+
+/// One client probe observation emitted during `--regime paired-probe`.
+/// Joined by `scripts/score_efficacy.py` against Envoy and `custos-proc` JSON logs on `request_id`.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProbeObservation {
+    pub request_id: String,
+    pub pair_id: String,
+    pub family: String,
+    pub mutation: String,
+    pub role: String,
+    pub payload_name: String,
+    pub expected: String,
+    pub status: String,
+    pub topology: String,
+    pub cell: String,
+    pub trial: u32,
+    pub seq: usize,
+    pub tx_bytes: u64,
+    pub rx_bytes: u64,
+    pub latency_ns: u64,
+    pub method: String,
+    pub framing: String,
 }
 
 /// One manifest entry scored by `--regime oracle-sweep`.
@@ -265,6 +308,46 @@ pub fn print_summary(report: &TrialReport, mut out: impl Write) -> io::Result<()
         )?;
     }
     write_oracle_table(report, &mut out)?;
+    write_probe_table(report, &mut out)?;
+    Ok(())
+}
+
+fn write_probe_table(report: &TrialReport, out: &mut impl Write) -> io::Result<()> {
+    if report.probes.is_empty() {
+        return Ok(());
+    }
+    if let Some(meta) = &report.study_meta {
+        writeln!(
+            out,
+            "paired-probe  study={}  backend={}  cell={}  topo={}  trial={}  seed={:#x}  pairs={}  probes={}",
+            meta.study_id,
+            meta.backend,
+            meta.cell,
+            meta.topology_tag,
+            meta.trial_index,
+            meta.trial_seed,
+            meta.eligible_pairs,
+            report.probes.len()
+        )?;
+    }
+    writeln!(
+        out,
+        "{:<48} {:<24} {:<8} {:<34} {:<18} {:>10} {:>12}",
+        "request_id", "pair_id", "role", "payload", "status", "tx_bytes", "latency_ns"
+    )?;
+    for p in &report.probes {
+        writeln!(
+            out,
+            "{:<48} {:<24} {:<8} {:<34} {:<18} {:>10} {:>12}",
+            p.request_id,
+            p.pair_id,
+            p.role,
+            p.payload_name,
+            p.status,
+            p.tx_bytes,
+            p.latency_ns
+        )?;
+    }
     Ok(())
 }
 
@@ -354,6 +437,17 @@ pub fn export(report: &TrialReport, dir: &Path) -> io::Result<(PathBuf, PathBuf)
         .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
     fs::write(&json_path, json + "\n")?;
     fs::write(&csv_path, latency_csv(report))?;
+    if !report.probes.is_empty() {
+        let jsonl_path = dir.join(format!("{stem}.probes.jsonl"));
+        let mut lines = String::new();
+        for p in &report.probes {
+            let line = serde_json::to_string(p)
+                .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+            lines.push_str(&line);
+            lines.push('\n');
+        }
+        fs::write(jsonl_path, lines)?;
+    }
     Ok((json_path, csv_path))
 }
 

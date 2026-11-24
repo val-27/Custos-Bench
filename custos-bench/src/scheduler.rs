@@ -85,12 +85,38 @@ impl Corpus {
         }
 
         // Build the multi-packet benign rotation pool (`benign_b1`, `benign_bytes_tensor`,
-        // `nesting_depth_15`, `nesting_depth_16`) used in `interleaved`, `saturating-burst`,
-        // and `--batch all` steady-benign runs.
+        // `nesting_depth_15`, `nesting_depth_16`, plus all allow-twin payloads when `--batch all`
+        // is requested) used in `interleaved`, `saturating-burst`, `paired-probe`, and `--batch all`.
         let mut mixed_benign: Vec<Payload> = Vec::new();
         mixed_benign.push(benign[0].clone());
-        for candidate in ["benign_b1", "benign_bytes_tensor", "nesting_depth_15", "nesting_depth_16"] {
-            if let Some(p) = benign.iter().find(|p| p.name == candidate) {
+        let candidates: &[&str] = if benign_stem == "all" {
+            &[
+                "benign_b1",
+                "benign_bytes_tensor",
+                "nesting_depth_15",
+                "nesting_depth_16",
+                "benign_multichunk_aligned",
+                "benign_contents_fp32_unpacked",
+                "benign_contents_fp32_packed",
+                "benign_mixed_fp32_bytes",
+                "benign_param_binary_data_size",
+                "benign_shape_zero_axis",
+                "benign_shape_pos_packed",
+                "benign_dtype_bool",
+                "benign_dtype_fp16",
+                "benign_dtype_bf16",
+                "benign_dtype_fp64",
+            ]
+        } else {
+            &[
+                "benign_b1",
+                "benign_bytes_tensor",
+                "nesting_depth_15",
+                "nesting_depth_16",
+            ]
+        };
+        for candidate in candidates {
+            if let Some(p) = benign.iter().find(|p| p.name == *candidate) {
                 if !mixed_benign.iter().any(|m| m.name == p.name) {
                     mixed_benign.push(p.clone());
                 }
@@ -133,8 +159,8 @@ impl Corpus {
                     &self.malicious[mal_idx as usize % self.malicious.len()]
                 }
             }
-            // The sweep sends manifest entries itself and does not use this rotation.
-            Regime::OracleSweep => &self.benign[0],
+            // The sweep and paired-probe send manifest entries themselves and do not use this rotation.
+            Regime::OracleSweep | Regime::PairedProbe => &self.benign[0],
         }
     }
 }
@@ -243,6 +269,9 @@ pub async fn execute(cli: &Cli, clock: &Clock) -> Result<TrialReport> {
     if cli.regime == Regime::OracleSweep {
         return crate::oracle::execute_sweep(cli, clock).await;
     }
+    if cli.regime == Regime::PairedProbe {
+        return crate::oracle::execute_paired_probe(cli, clock).await;
+    }
     let corpus = Corpus::load(&cli.corpus, &cli.batch)?;
     if cli.dry_run {
         return Ok(dry_report(cli, &corpus));
@@ -277,7 +306,9 @@ pub async fn execute(cli: &Cli, clock: &Clock) -> Result<TrialReport> {
         Regime::SteadyBenign | Regime::Interleaved => {
             run_open_loop(cli, clock, &corpus, channel, path, t0, &stop, &completed).await?
         }
-        Regime::OracleSweep => unreachable!("oracle-sweep returns before the open-loop match"),
+        Regime::OracleSweep | Regime::PairedProbe => {
+            unreachable!("oracle-sweep and paired-probe return before the open-loop match")
+        }
     };
     stop.store(true, Ordering::Relaxed);
     let elapsed = started.elapsed();
@@ -293,6 +324,71 @@ pub async fn execute(cli: &Cli, clock: &Clock) -> Result<TrialReport> {
     };
 
     Ok(assemble(cli, observations, elapsed, process_samples, wire, Vec::new()))
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn run_background_until_stopped(
+    cli: &Cli,
+    clock: &Clock,
+    corpus: &Corpus,
+    channel: Channel,
+    path: PathAndQuery,
+    t0: u64,
+    stop: &AtomicBool,
+    completed: &AtomicU64,
+) -> Result<Vec<Observation>> {
+    let rps = cli.rps.max(1);
+    let interval_ns = 1_000_000_000u64 / rps;
+    let limit = Arc::new(Semaphore::new(cli.concurrency.max(1)));
+    let mut tasks = Vec::new();
+    let mut index = 0u64;
+
+    while !stop.load(Ordering::Relaxed) {
+        let scheduled_ns = t0_offset(index, interval_ns);
+        wait_until(clock, t0, scheduled_ns).await;
+        if stop.load(Ordering::Relaxed) {
+            break;
+        }
+        let payload = corpus.select(Regime::SteadyBenign, index, 0).clone();
+        let limit_clone = Arc::clone(&limit);
+        let mut grpc = tonic::client::Grpc::new(channel.clone())
+            .max_decoding_message_size(cli.max_message_bytes)
+            .max_encoding_message_size(cli.max_message_bytes);
+        let path = path.clone();
+        let clock = clock.clone();
+        let timeout = Duration::from_millis(cli.timeout_ms);
+        tasks.push(tokio::spawn(async move {
+            let _permit = limit_clone.acquire_owned().await.ok();
+            let actual_send = clock.raw();
+            let compressed = payload.name == "grpc_compressed_flag_01";
+            let status = unary(&mut grpc, path, payload.bytes.clone(), compressed, timeout).await;
+            let completed_at = clock.raw();
+            let latency_ns = clock
+                .delta(t0, completed_at)
+                .as_nanos()
+                .saturating_sub(scheduled_ns as u128) as u64;
+            let service_ns = clock.delta(actual_send, completed_at).as_nanos() as u64;
+            Observation {
+                name: payload.name,
+                latency_ns,
+                service_ns,
+                malicious: false,
+                status: status.0,
+                tx_bytes: payload.bytes.len() as u64,
+                rx_bytes: status.1,
+            }
+        }));
+        index += 1;
+    }
+
+    let mut observations = Vec::with_capacity(tasks.len());
+    for task in tasks {
+        if let Ok(obs) = task.await {
+            completed.fetch_add(1, Ordering::Relaxed);
+            observations.push(obs);
+        }
+    }
+    Ok(observations)
 }
 
 fn sample_loop(mut sampler: telemetry::ProcSampler, stop: Arc<AtomicBool>) -> Vec<ProcessSample> {
@@ -444,6 +540,17 @@ pub(crate) async fn unary(
     compressed: bool,
     timeout: Duration,
 ) -> (&'static str, u64) {
+    unary_with_request_id(grpc, path, payload, compressed, None, timeout).await
+}
+
+pub(crate) async fn unary_with_request_id(
+    grpc: &mut tonic::client::Grpc<Channel>,
+    path: PathAndQuery,
+    payload: Bytes,
+    compressed: bool,
+    request_id: Option<&str>,
+    timeout: Duration,
+) -> (&'static str, u64) {
     let ready = tokio::time::timeout(timeout, grpc.ready()).await;
     if ready.is_err() {
         return ("DEADLINE_EXCEEDED", 0);
@@ -455,6 +562,11 @@ pub(crate) async fn unary(
     if compressed {
         if let Ok(val) = tonic::metadata::MetadataValue::try_from("gzip") {
             request.metadata_mut().insert("grpc-encoding", val);
+        }
+    }
+    if let Some(req_id) = request_id {
+        if let Ok(val) = tonic::metadata::MetadataValue::try_from(req_id) {
+            request.metadata_mut().insert("x-request-id", val);
         }
     }
     match tokio::time::timeout(timeout, grpc.unary(request, path, RawCodec)).await {
@@ -569,6 +681,8 @@ pub(crate) fn assemble(
         wire,
         processes,
         oracle,
+        study_meta: None,
+        probes: Vec::new(),
     }
 }
 
@@ -596,6 +710,8 @@ fn dry_report(cli: &Cli, corpus: &Corpus) -> TrialReport {
         wire: None,
         processes: Vec::new(),
         oracle: Vec::new(),
+        study_meta: None,
+        probes: Vec::new(),
     }
 }
 
@@ -605,6 +721,7 @@ pub fn regime_name(regime: Regime) -> &'static str {
         Regime::Interleaved => "interleaved",
         Regime::SaturatingBurst => "saturating-burst",
         Regime::OracleSweep => "oracle-sweep",
+        Regime::PairedProbe => "paired-probe",
     }
 }
 

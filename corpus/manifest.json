@@ -1,6 +1,6 @@
 {
   "schema": "custos-benchmarks.corpus.v2",
-  "count": 59,
+  "count": 60,
   "artifacts": [
     {
       "name": "benign_b1",
@@ -12,7 +12,14 @@
       "grpc_bytes": 602175,
       "notes": "resnet50 FP32 NCHW [1,3,224,224] source=synthetic tensor_bytes=602112",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "background",
+      "pair_id": null,
+      "family": null,
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_b2",
@@ -24,7 +31,14 @@
       "grpc_bytes": 1204287,
       "notes": "resnet50 FP32 NCHW [2,3,224,224] source=synthetic tensor_bytes=1204224",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "background",
+      "pair_id": null,
+      "family": null,
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_b4",
@@ -36,7 +50,14 @@
       "grpc_bytes": 2408512,
       "notes": "resnet50 FP32 NCHW [4,3,224,224] source=synthetic tensor_bytes=2408448",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "background",
+      "pair_id": null,
+      "family": null,
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_b8",
@@ -48,7 +69,14 @@
       "grpc_bytes": 4816960,
       "notes": "resnet50 FP32 NCHW [8,3,224,224] source=synthetic tensor_bytes=4816896",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "background",
+      "pair_id": null,
+      "family": null,
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_b16",
@@ -60,7 +88,14 @@
       "grpc_bytes": 9633857,
       "notes": "resnet50 FP32 NCHW [16,3,224,224] source=synthetic tensor_bytes=9633792",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "background",
+      "pair_id": null,
+      "family": null,
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_bytes_tensor",
@@ -72,7 +107,14 @@
       "grpc_bytes": 139,
       "notes": "KServe v2 BYTES tensor [1,2] with length-prefixed strings (73 B raw_input_contents)",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": "bytes_oversize_prefix",
+      "family": "bytes_tensor",
+      "twin": null,
+      "mutation": "bytes_u32_length_prefix",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "nesting_depth_15",
@@ -82,9 +124,16 @@
       "grpc_path": "corpus/malicious/nesting_depth_15.grpc",
       "pb_bytes": 42,
       "grpc_bytes": 47,
-      "notes": "field-5 length-delimited wrap depth=15; boundary allow is D<=16",
+      "notes": "field-4 length-delimited wrap depth=15; boundary allow is D<=16",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "background",
+      "pair_id": null,
+      "family": null,
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "nesting_depth_16",
@@ -94,9 +143,16 @@
       "grpc_path": "corpus/malicious/nesting_depth_16.grpc",
       "pb_bytes": 44,
       "grpc_bytes": 49,
-      "notes": "field-5 length-delimited wrap depth=16; boundary allow is D<=16",
+      "notes": "field-4 length-delimited wrap depth=16; boundary allow is D<=16",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": "nesting_bound_17",
+      "family": "nesting_bound",
+      "twin": null,
+      "mutation": "depth_17_vs_16",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "nesting_depth_17",
@@ -106,9 +162,16 @@
       "grpc_path": "corpus/malicious/nesting_depth_17.grpc",
       "pb_bytes": 46,
       "grpc_bytes": 51,
-      "notes": "field-5 length-delimited wrap depth=17; boundary allow is D<=16",
+      "notes": "field-4 length-delimited wrap depth=17; boundary allow is D<=16",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "nesting_bound_17",
+      "family": "nesting_bound",
+      "twin": "nesting_depth_16",
+      "mutation": "depth_17_vs_16",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "nesting_depth_20",
@@ -118,9 +181,16 @@
       "grpc_path": "corpus/malicious/nesting_depth_20.grpc",
       "pb_bytes": 52,
       "grpc_bytes": 57,
-      "notes": "field-5 length-delimited wrap depth=20; boundary allow is D<=16",
+      "notes": "field-4 length-delimited wrap depth=20; boundary allow is D<=16",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "nesting_bomb",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "deep_bomb_without_single_mutation_twin"
     },
     {
       "name": "nesting_depth_50",
@@ -130,9 +200,16 @@
       "grpc_path": "corpus/malicious/nesting_depth_50.grpc",
       "pb_bytes": 112,
       "grpc_bytes": 117,
-      "notes": "field-5 length-delimited wrap depth=50; boundary allow is D<=16",
+      "notes": "field-4 length-delimited wrap depth=50; boundary allow is D<=16",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "nesting_bomb",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "deep_bomb_without_single_mutation_twin"
     },
     {
       "name": "nesting_depth_100",
@@ -142,9 +219,16 @@
       "grpc_path": "corpus/malicious/nesting_depth_100.grpc",
       "pb_bytes": 249,
       "grpc_bytes": 254,
-      "notes": "field-5 length-delimited wrap depth=100; boundary allow is D<=16",
+      "notes": "field-4 length-delimited wrap depth=100; boundary allow is D<=16",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "nesting_bomb",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "deep_bomb_without_single_mutation_twin"
     },
     {
       "name": "nesting_depth_250",
@@ -154,9 +238,16 @@
       "grpc_path": "corpus/malicious/nesting_depth_250.grpc",
       "pb_bytes": 699,
       "grpc_bytes": 704,
-      "notes": "field-5 length-delimited wrap depth=250; boundary allow is D<=16",
+      "notes": "field-4 length-delimited wrap depth=250; boundary allow is D<=16",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "nesting_bomb",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "deep_bomb_without_single_mutation_twin"
     },
     {
       "name": "nesting_depth_500",
@@ -166,9 +257,16 @@
       "grpc_path": "corpus/malicious/nesting_depth_500.grpc",
       "pb_bytes": 1449,
       "grpc_bytes": 1454,
-      "notes": "field-5 length-delimited wrap depth=500; boundary allow is D<=16",
+      "notes": "field-4 length-delimited wrap depth=500; boundary allow is D<=16",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "nesting_bomb",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "deep_bomb_without_single_mutation_twin"
     },
     {
       "name": "shape_neg_packed",
@@ -180,7 +278,14 @@
       "grpc_bytes": 65,
       "notes": "packed shape [1,3,-1,224]; -1 is the 10-byte two's-complement varint",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "shape_sign_neg",
+      "family": "shape_sign",
+      "twin": "benign_shape_pos_packed",
+      "mutation": "sign_bit",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "shape_neg_unpacked",
@@ -192,7 +297,14 @@
       "grpc_bytes": 67,
       "notes": "unpacked shape [1,3,-1,224] via repeated tag 0x18",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "shape_sign",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "unpaired_unpacked_variant_of_shape_sign_neg"
     },
     {
       "name": "shape_wrap_64bit_packed",
@@ -204,7 +316,14 @@
       "grpc_bytes": 62,
       "notes": "packed shape [2, 2**62, 2] whose product is 0 mod 2**64",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "shape_overflow",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "oom_or_wraparound_without_single_mutation_twin"
     },
     {
       "name": "shape_wrap_64bit_unpacked",
@@ -216,7 +335,14 @@
       "grpc_bytes": 63,
       "notes": "unpacked shape [2, 2**62, 2]",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "shape_overflow",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "oom_or_wraparound_without_single_mutation_twin"
     },
     {
       "name": "shape_oom_massive_packed",
@@ -228,7 +354,14 @@
       "grpc_bytes": 57,
       "notes": "packed shape [1024,1024,1024] ~= 1.07e9 elements",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "shape_overflow",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "oom_or_wraparound_without_single_mutation_twin"
     },
     {
       "name": "shape_oom_massive_unpacked",
@@ -240,7 +373,14 @@
       "grpc_bytes": 58,
       "notes": "unpacked shape [1024,1024,1024]",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "shape_overflow",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "oom_or_wraparound_without_single_mutation_twin"
     },
     {
       "name": "shape_reordered_tail",
@@ -252,7 +392,14 @@
       "grpc_bytes": 16445,
       "notes": "16 KiB field 7 precedes malicious field 5 [1024,1024,1024]",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "shape_overflow",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "oom_or_wraparound_without_single_mutation_twin"
     },
     {
       "name": "shape_buffer_mismatch_underread",
@@ -264,7 +411,14 @@
       "grpc_bytes": 123,
       "notes": "KServe v2 shape-to-buffer parity mismatch: shape [4,3,224,224] FP32 (2,408,448 B expected) with 64 B raw_input_contents",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "shape_buffer_underread",
+      "family": "shape_parity",
+      "twin": "benign_b4",
+      "mutation": "truncated_raw_chunk",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "varint_unterminated_11",
@@ -276,7 +430,14 @@
       "grpc_bytes": 27,
       "notes": "tag 0x08 followed by 11 bytes of 0xFF (MSB=1)",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "malformed_varint",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "wire_varint_truncation_without_single_mutation_twin"
     },
     {
       "name": "varint_unterminated_64",
@@ -288,7 +449,14 @@
       "grpc_bytes": 80,
       "notes": "tag 0x08 followed by 64 bytes of 0x80 (MSB=1)",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "malformed_varint",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "wire_varint_truncation_without_single_mutation_twin"
     },
     {
       "name": "varint_10th_byte_overflow",
@@ -300,7 +468,14 @@
       "grpc_bytes": 26,
       "notes": "tag 0x08, 9x 0xFF, terminating 0x7F with bits above a 64-bit shift",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "malformed_varint",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "wire_varint_truncation_without_single_mutation_twin"
     },
     {
       "name": "varint_truncated_eof",
@@ -312,7 +487,14 @@
       "grpc_bytes": 19,
       "notes": "tag 0x08 followed by 3 bytes of 0xFF and immediate EOF",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "malformed_varint",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "wire_varint_truncation_without_single_mutation_twin"
     },
     {
       "name": "sgroup_wire_type_3_bomb",
@@ -324,7 +506,14 @@
       "grpc_bytes": 273,
       "notes": "CVE-2024-7254-class: 64 nested Wire Type 3 (SGROUP) tags bypassing recursion counters",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "wire_type_exploit",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "wire_type_3_group_bomb_without_single_mutation_twin"
     },
     {
       "name": "unknown_field_ast_flood",
@@ -336,7 +525,14 @@
       "grpc_bytes": 4515,
       "notes": "CVE-2022-1941 / CVE-2021-22569-class: 1,500 shallow unknown tags at D=0 (> 1,024 tag limit)",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "ast_flood",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "tag_flood_without_single_mutation_twin"
     },
     {
       "name": "cve_2024_0088_shm_params_infer",
@@ -348,7 +544,14 @@
       "grpc_bytes": 182,
       "notes": "CVE-2024-0088: shared_memory_region/offset/byte_size injected inside ModelInfer parameters map",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "shm_params_infer",
+      "family": "parameters",
+      "twin": "benign_param_binary_data_size",
+      "mutation": "shared_memory_param_key",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "grpc_compressed_flag_01",
@@ -360,7 +563,14 @@
       "grpc_bytes": 62,
       "notes": "Compressed gRPC frame (flag=0x01 / gzip) concealing an OOM tensor payload from uncompressed wire inspection",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "compressed_frame",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "compressed_oom_bomb_without_single_mutation_twin"
     },
     {
       "name": "benign_multichunk_aligned",
@@ -372,7 +582,14 @@
       "grpc_bytes": 107,
       "notes": "FP32 [4] then FP32 [1] with raw chunks of 16 then 4 bytes",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": "multichunk_swap",
+      "family": "multichunk_fp32",
+      "twin": null,
+      "mutation": "per_chunk_binding",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_contents_fp32_unpacked",
@@ -384,7 +601,14 @@
       "grpc_bytes": 91,
       "notes": "FP32 [1,4] as four unpacked fp32_contents (field 6, wire type 5), no raw_input_contents",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": "contents_short",
+      "family": "contents_fp32",
+      "twin": null,
+      "mutation": "contents_cardinality",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_contents_fp32_packed",
@@ -396,7 +620,14 @@
       "grpc_bytes": 87,
       "notes": "FP32 [1,4] as packed fp32_contents (field 6, wire type 2) holding float32 1,2,3,4, no raw_input_contents",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": null,
+      "family": "contents_fp32",
+      "twin": null,
+      "mutation": "contents_packed_layout",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_mixed_fp32_bytes",
@@ -408,7 +639,14 @@
       "grpc_bytes": 118,
       "notes": "FP32 [1,4] raw of 16 bytes plus BYTES [1,2] with little-endian u32 prefixes",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": "bytes_masks_short",
+      "family": "bytes_tensor",
+      "twin": null,
+      "mutation": "bytes_chunk_compensates_short_fp32",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_param_binary_data_size",
@@ -420,7 +658,14 @@
       "grpc_bytes": 111,
       "notes": "FP32 [1,4] with InferParameter key binary_data_size on int64_param field 2",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": "shm_params_infer",
+      "family": "parameters",
+      "twin": null,
+      "mutation": "shared_memory_param_key",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_shape_zero_axis",
@@ -432,7 +677,33 @@
       "grpc_bytes": 68,
       "notes": "FP32 [1,0,224,224] with an empty raw_input_contents. KServe allows a zero axis",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": null,
+      "family": "shape_axis",
+      "twin": null,
+      "mutation": "zero_length_axis",
+      "eligible": false,
+      "ineligible_reason": null
+    },
+    {
+      "name": "benign_shape_pos_packed",
+      "category": "shape_axis",
+      "expected": "allow",
+      "pb_path": "corpus/benign/benign_shape_pos_packed.pb",
+      "grpc_path": "corpus/benign/benign_shape_pos_packed.grpc",
+      "pb_bytes": 2742,
+      "grpc_bytes": 2747,
+      "notes": "FP32 [1,3,1,224] with a 2,688-byte raw chunk; positive-dimension twin for shape_neg_packed",
+      "method": "/inference.GRPCInferenceService/ModelInfer",
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": "shape_sign_neg",
+      "family": "shape_sign",
+      "twin": null,
+      "mutation": "sign_bit",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_dtype_bool",
@@ -444,7 +715,14 @@
       "grpc_bytes": 63,
       "notes": "BOOL [1,4] with a 4-byte raw chunk",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": null,
+      "family": "datatype",
+      "twin": null,
+      "mutation": "dtype_width",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_dtype_fp16",
@@ -456,7 +734,14 @@
       "grpc_bytes": 67,
       "notes": "FP16 [1,4] with an 8-byte raw chunk",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": "dtype_unknown_space",
+      "family": "dtype_unknown",
+      "twin": null,
+      "mutation": "datatype_token",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_dtype_bf16",
@@ -468,7 +753,14 @@
       "grpc_bytes": 67,
       "notes": "BF16 [1,4] with an 8-byte raw chunk",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": null,
+      "family": "datatype",
+      "twin": null,
+      "mutation": "dtype_width",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "benign_dtype_fp64",
@@ -480,7 +772,14 @@
       "grpc_bytes": 91,
       "notes": "FP64 [1,4] with a 32-byte raw chunk",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "twin",
+      "pair_id": "dtype_fp64_short",
+      "family": "dtype_fp64",
+      "twin": null,
+      "mutation": "raw_width",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "chunk_swap_fp32",
@@ -492,7 +791,14 @@
       "grpc_bytes": 97,
       "notes": "FP32 [4] bound to a 4-byte chunk and FP32 [1] bound to a 16-byte chunk",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "multichunk_swap",
+      "family": "multichunk_fp32",
+      "twin": "benign_multichunk_aligned",
+      "mutation": "raw_chunk_order",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "chunk_omitted_fp32",
@@ -504,7 +810,14 @@
       "grpc_bytes": 98,
       "notes": "Two tensors expecting 16 and 4 bytes, with a single 20-byte raw chunk",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "multichunk_omitted",
+      "family": "multichunk_fp32",
+      "twin": "benign_multichunk_aligned",
+      "mutation": "raw_chunk_cardinality",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "chunk_swap_reordered",
@@ -516,7 +829,14 @@
       "grpc_bytes": 102,
       "notes": "Swapped raw chunks written before the inputs. Binding is by index, not wire order",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "multichunk_reordered",
+      "family": "multichunk_fp32",
+      "twin": "benign_multichunk_aligned",
+      "mutation": "raw_chunk_wire_order_and_swap",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "contents_fp32_unpacked_short",
@@ -528,7 +848,14 @@
       "grpc_bytes": 94,
       "notes": "FP32 [4,3,224,224] with four unpacked fp32 values and no raw_input_contents",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "contents_short",
+      "family": "contents_fp32",
+      "twin": "benign_contents_fp32_unpacked",
+      "mutation": "contents_cardinality_short",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "contents_fp32_unpacked_ceiling",
@@ -540,7 +867,14 @@
       "grpc_bytes": 79,
       "notes": "FP32 [16777216] with one unpacked fp32 value and no raw_input_contents",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "contents_ceiling",
+      "family": "contents_fp32",
+      "twin": "benign_contents_fp32_unpacked",
+      "mutation": "contents_cardinality_ceiling",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "bytes_length_prefix_oversize",
@@ -552,7 +886,14 @@
       "grpc_bytes": 76,
       "notes": "BYTES [1] whose little-endian u32 length is 0xFFFFFFFF inside an 8-byte chunk",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "bytes_oversize_prefix",
+      "family": "bytes_tensor",
+      "twin": "benign_bytes_tensor",
+      "mutation": "bytes_u32_length_prefix",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "bytes_masks_short_fp32",
@@ -564,7 +905,14 @@
       "grpc_bytes": 102,
       "notes": "FP32 [4] chunk of 4 bytes compensated by a 16-byte BYTES chunk",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "bytes_masks_short",
+      "family": "bytes_tensor",
+      "twin": "benign_mixed_fp32_bytes",
+      "mutation": "bytes_chunk_compensates_short_fp32",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "shape_sum_four_ceilings",
@@ -576,7 +924,14 @@
       "grpc_bytes": 131,
       "notes": "Four FP32 [16777216] tensors and no raw chunks. Declared elements are 4 times the per-tensor ceiling",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "shape_budget",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "cumulative_ceiling_exceeds_envoy_16mib_buffer_for_twin"
     },
     {
       "name": "shape_packed_ones",
@@ -588,7 +943,14 @@
       "grpc_bytes": 100065,
       "notes": "One packed shape of 100000 dimensions of 1 (product stays 1). latency_ns is the measurement against the 250 ms ext_proc deadline",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "unpaired_attack",
+      "pair_id": null,
+      "family": "shape_budget",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "packed_dimension_flood_without_single_mutation_twin"
     },
     {
       "name": "datatype_fp64_short_raw",
@@ -600,7 +962,14 @@
       "grpc_bytes": 81,
       "notes": "FP64 [1,4] with a 16-byte raw chunk (the FP32 length)",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "dtype_fp64_short",
+      "family": "dtype_fp64",
+      "twin": "benign_dtype_fp64",
+      "mutation": "raw_width",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "datatype_unknown_width",
@@ -612,7 +981,14 @@
       "grpc_bytes": 81,
       "notes": "Datatype 'FP32 ' (trailing space) on shape [1,4] with a 16-byte raw chunk. Unknown width fails closed",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "attack",
+      "pair_id": "dtype_unknown_space",
+      "family": "dtype_unknown",
+      "twin": "benign_dtype_fp16",
+      "mutation": "datatype_token",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "frame_single",
@@ -624,7 +1000,14 @@
       "grpc_bytes": 57,
       "notes": "One uncompressed gRPC frame whose declared length equals the body. Sent as the HTTP body, not via tonic",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "http-body"
+      "framing": "http-body",
+      "role": "twin",
+      "pair_id": "framing_two_concat",
+      "family": "framing",
+      "twin": null,
+      "mutation": "concatenated_second_grpc_frame",
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "frame_two_concat",
@@ -636,7 +1019,14 @@
       "grpc_bytes": 114,
       "notes": "Two complete frames concatenated in one HTTP body",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "http-body"
+      "framing": "http-body",
+      "role": "attack",
+      "pair_id": "framing_two_concat",
+      "family": "framing",
+      "twin": "frame_single",
+      "mutation": "concatenated_second_grpc_frame",
+      "eligible": true,
+      "ineligible_reason": null
     },
     {
       "name": "frame_stream_infer_two",
@@ -648,7 +1038,14 @@
       "grpc_bytes": 114,
       "notes": "ModelStreamInfer is not on the RPC allowlist. The body is also two frames",
       "method": "/inference.GRPCInferenceService/ModelStreamInfer",
-      "framing": "http-body"
+      "framing": "http-body",
+      "role": "header_probe",
+      "pair_id": null,
+      "family": "framing",
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "two_simultaneous_mutations_method_and_second_frame"
     },
     {
       "name": "rpc_model_infer_empty",
@@ -660,7 +1057,14 @@
       "grpc_bytes": 5,
       "notes": "Empty ModelInfer message. The framed body is a zero-length protobuf",
       "method": "/inference.GRPCInferenceService/ModelInfer",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "header_probe",
+      "pair_id": null,
+      "family": null,
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": null
     },
     {
       "name": "rpc_system_shared_memory_register",
@@ -672,7 +1076,14 @@
       "grpc_bytes": 5,
       "notes": "Header allowlist probe. Expected block is PERMISSION_DENIED or HTTP 403, and the body is not forwarded",
       "method": "/inference.GRPCInferenceService/SystemSharedMemoryRegister",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "header_probe",
+      "pair_id": null,
+      "family": null,
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "header_only_rpc_probe_scored_in_allowlist_table"
     },
     {
       "name": "rpc_cuda_shared_memory_register",
@@ -684,7 +1095,14 @@
       "grpc_bytes": 5,
       "notes": "Header allowlist probe. Expected block is PERMISSION_DENIED or HTTP 403",
       "method": "/inference.GRPCInferenceService/CudaSharedMemoryRegister",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "header_probe",
+      "pair_id": null,
+      "family": null,
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "header_only_rpc_probe_scored_in_allowlist_table"
     },
     {
       "name": "rpc_repository_model_load",
@@ -696,7 +1114,14 @@
       "grpc_bytes": 5,
       "notes": "Header allowlist probe. Expected block is PERMISSION_DENIED or HTTP 403",
       "method": "/inference.GRPCInferenceService/RepositoryModelLoad",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "header_probe",
+      "pair_id": null,
+      "family": null,
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "header_only_rpc_probe_scored_in_allowlist_table"
     },
     {
       "name": "rpc_repository_model_unload",
@@ -708,7 +1133,14 @@
       "grpc_bytes": 5,
       "notes": "Header allowlist probe. Expected block is PERMISSION_DENIED or HTTP 403",
       "method": "/inference.GRPCInferenceService/RepositoryModelUnload",
-      "framing": "protobuf"
+      "framing": "protobuf",
+      "role": "header_probe",
+      "pair_id": null,
+      "family": null,
+      "twin": null,
+      "mutation": null,
+      "eligible": false,
+      "ineligible_reason": "header_only_rpc_probe_scored_in_allowlist_table"
     }
   ]
 }

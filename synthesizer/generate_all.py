@@ -8,6 +8,7 @@ from pathlib import Path
 
 from benign_generator import BATCH_SIZES, generate_benign
 from exploit_generator import generate_exploits
+from lint_pairs import lint_corpus
 from oracle_generator import generate_oracle, validate_corpus
 from wire_utils import write_manifest
 
@@ -69,8 +70,16 @@ def main(argv: list[str] | None = None) -> int:
     manifest_path = corpus_dir / "manifest.json"
     write_manifest(manifest_path, artifacts)
     validate_corpus(corpus_dir, ceiling=args.include_ceiling_blob)
+    eligible, ineligible, lint_errors, _ = lint_corpus(corpus_dir)
+    if lint_errors:
+        for err in lint_errors:
+            print(f"lint error: {err}", file=sys.stderr)
+        return 1
 
-    print(f"wrote {len(artifacts)} payloads to {corpus_dir}")
+    print(
+        f"wrote {len(artifacts)} payloads to {corpus_dir} "
+        f"({len(eligible)} eligible pairs, {len(ineligible)} ineligible rejects)"
+    )
     for artifact in artifacts:
         print(
             f"  {artifact.category:18} {artifact.expected:6} "

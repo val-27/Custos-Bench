@@ -32,6 +32,15 @@ class Artifact:
     gRPC method. ``method`` is the ``:path`` the sweep calls, and
     ``framing`` is ``protobuf`` (tonic adds the 5-byte frame) or
     ``http-body`` (the file is the exact HTTP/2 body).
+
+    Paired-probe efficacy metadata:
+    * ``role``: ``"attack"`` | ``"twin"`` | ``"background"`` | ``"unpaired_attack"`` | ``"header_probe"``
+    * ``pair_id``: unique 1-to-1 identifier for an eligible ``(attack, twin)`` pair (or primary pair on a shared twin)
+    * ``family``: logical mutation family grouping related pairs (e.g. ``"multichunk_fp32"``)
+    * ``twin``: manifest ``name`` of the 1-mutation benign twin (for ``role == "attack"``)
+    * ``mutation``: single wire mutation separating the attack from its twin
+    * ``eligible``: whether this row is an eligible attack in the paired-probe efficacy census
+    * ``ineligible_reason``: non-empty explanation when ``expected == "reject"`` and ``not eligible``
     """
 
     name: str
@@ -44,6 +53,13 @@ class Artifact:
     notes: str = ""
     method: str = MODEL_INFER_METHOD
     framing: str = "protobuf"
+    role: str = "background"
+    pair_id: str | None = None
+    family: str | None = None
+    twin: str | None = None
+    mutation: str | None = None
+    eligible: bool = False
+    ineligible_reason: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -65,6 +81,13 @@ def write_dual(
     expected: str,
     notes: str = "",
     compression_flag: int = GRPC_COMPRESSION_NONE,
+    role: str = "background",
+    pair_id: str | None = None,
+    family: str | None = None,
+    twin: str | None = None,
+    mutation: str | None = None,
+    eligible: bool = False,
+    ineligible_reason: str | None = None,
 ) -> Artifact:
     """Write ``<name>.pb`` and ``<name>.grpc`` and return the manifest entry."""
     directory.mkdir(parents=True, exist_ok=True)
@@ -89,6 +112,13 @@ def write_dual(
         pb_bytes=len(pb_bytes),
         grpc_bytes=len(framed),
         notes=notes,
+        role=role,
+        pair_id=pair_id,
+        family=family,
+        twin=twin,
+        mutation=mutation,
+        eligible=eligible,
+        ineligible_reason=ineligible_reason,
     )
 
 

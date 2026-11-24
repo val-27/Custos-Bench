@@ -256,6 +256,7 @@ def generate_benign(
                     f"resnet50 FP32 NCHW [{batch_size},3,224,224] "
                     f"source={source} tensor_bytes={expected}"
                 ),
+                role="background",
             )
         )
 
@@ -282,6 +283,10 @@ def generate_benign(
             category="benign",
             expected="allow",
             notes=f"KServe v2 BYTES tensor [1,2] with length-prefixed strings ({len(bytes_raw)} B raw_input_contents)",
+            role="twin",
+            pair_id="bytes_oversize_prefix",
+            family="bytes_tensor",
+            mutation="bytes_u32_length_prefix",
         )
     )
     return artifacts
